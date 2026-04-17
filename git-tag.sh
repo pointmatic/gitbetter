@@ -71,13 +71,35 @@ fi
 git rev-parse --is-inside-work-tree &>/dev/null \
     || fail "Not inside a git repository."
 
+# ── Duplicate Tag Check ─────────────────────────────────────
+if [[ -n "$(git tag -l "${TAG}")" ]]; then
+    fail "Tag ${BOLD}${TAG}${RESET}${R} already exists locally."
+fi
+
+# ── Find Latest Tag (numeric sort) ──────────────────────────
+# Strip leading 'v', sort numerically by major.minor.patch, re-prepend 'v'
+LATEST_TAG=""
+ALL_TAGS="$(git tag -l 'v*' 2>/dev/null || true)"
+if [[ -n "${ALL_TAGS}" ]]; then
+    LATEST_TAG="$(echo "${ALL_TAGS}" \
+        | sed 's/^v//' \
+        | sort -t. -k1,1n -k2,2n -k3,3n \
+        | tail -n 1 \
+        | sed 's/^/v/')"
+fi
+
 # ── Summary Banner ───────────────────────────────────────────
 echo ""
 echo -e "  ${BOLD}${C}╭─────────────────────────────────────────╮${RESET}"
 echo -e "  ${BOLD}${C}│${RESET}  ${BOLD}git-tag${RESET}                                ${BOLD}${C}│${RESET}"
 echo -e "  ${BOLD}${C}╰─────────────────────────────────────────╯${RESET}"
 echo ""
-info "${BOLD}Tag:${RESET}  ${G}${TAG}${RESET}"
+info "${BOLD}New tag:${RESET}  ${G}${TAG}${RESET}"
+if [[ -n "${LATEST_TAG}" ]]; then
+    info "${BOLD}Latest:${RESET}   ${M}${LATEST_TAG}${RESET}"
+else
+    info "${BOLD}Latest:${RESET}   ${DIM}(no tags found)${RESET}"
+fi
 
 # ── Create & Push Tag ────────────────────────────────────────
 confirm "Create and push tag ${TAG} to origin?"

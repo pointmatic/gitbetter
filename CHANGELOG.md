@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2025-04-16
+
+### Added
+
+- `git-tag.sh` duplicate tag detection: fails with clear error if tag already exists locally
+- `git-tag.sh` latest tag display in summary banner, sorted numerically by major.minor.patch (so `v1.10.0` > `v1.9.0`)
+- "(no tags found)" shown when no `v*` tags exist
+
 ## [0.3.0] — 2025-04-16
 
 ### Added

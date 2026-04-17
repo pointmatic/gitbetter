@@ -60,17 +60,17 @@ Add input validation so `git-tag.sh` rejects invalid tag formats before any git 
 - [x] Update CHANGELOG.md
 - [x] Verify: `./git-tag.sh v1.0.0` passes; `./git-tag.sh 1.0.0`, `./git-tag.sh v1.0`, `./git-tag.sh vabc` all fail with clear errors
 
-### Story B.b: v0.4.0 Duplicate Tag Detection and Latest Tag Display [Planned]
+### Story B.b: v0.4.0 Duplicate Tag Detection and Latest Tag Display [Done]
 
 Show the most recent tag for context and prevent creating duplicate tags.
 
-- [ ] Check `git tag -l "$TAG"` — fail if the tag already exists locally
-- [ ] Retrieve all `v*` tags, sort numerically by major.minor.patch (strip `v`, `sort -t. -k1,1n -k2,2n -k3,3n`), display the latest
-- [ ] Show "No tags found" if no tags exist
-- [ ] Display latest tag in the summary section after the header box
-- [ ] Bump version to v0.4.0
-- [ ] Update CHANGELOG.md
-- [ ] Verify: in a repo with tags `v1.9.0` and `v1.10.0`, latest shown is `v1.10.0`; creating a duplicate fails
+- [x] Check `git tag -l "$TAG"` — fail if the tag already exists locally
+- [x] Retrieve all `v*` tags, sort numerically by major.minor.patch (strip `v`, `sort -t. -k1,1n -k2,2n -k3,3n`), display the latest
+- [x] Show "No tags found" if no tags exist
+- [x] Display latest tag in the summary section after the header box
+- [x] Bump version to v0.4.0
+- [x] Update CHANGELOG.md
+- [x] Verify: in a repo with tags `v1.9.0` and `v1.10.0`, latest shown is `v1.10.0`; creating a duplicate fails
 
 ### Story B.c: v0.5.0 Tag Creation and Push [Planned]
 
