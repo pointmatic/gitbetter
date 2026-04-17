@@ -22,7 +22,7 @@ For efficiency, when you change modes, start a new LLM conversation.
 ### For LLMs
 
 **Modes**
-This Project-Guide offers a human-in-the-loop workflow for you to follow that can be dynamically reconfigured based on the project `mode`. Each `mode` defines a focused sequence of steps to guide you (the LLM) to help generate artifacts for some facet in the project lifecycle. This document is customized for plan_concept.
+This Project-Guide offers a human-in-the-loop workflow for you to follow that can be dynamically reconfigured based on the project `mode`. Each `mode` defines a focused cycle of steps to guide you (the LLM) to help generate artifacts for some facet in the project lifecycle. This document is customized for code_direct.
 
 **Approval Gate**
 When you have completed the steps, pause for the developer to review, correct, redirect, or ask questions about your work.  
@@ -39,67 +39,149 @@ When you have completed the steps, pause for the developer to review, correct, r
 
 ---
 
-# plan_concept mode (sequence)
+## Project Essentials
 
-> Generate a high-level concept (problem and solution space)
+<!--
+This file captures must-know facts future LLMs need to avoid blunders when
+working on this project. Anything a smart newcomer could miss on day one and
+waste time on goes here.
 
+This content gets injected verbatim under a `## Project Essentials` section
+in every rendered `go.md`, so entries below should use `###` for subsections
+(not `##`, which would collide with the wrapper heading). Do NOT include a
+top-level `#` title — the wrapper provides it.
+-->
 
-Define the problem space (problem statement, why, pain points, target users, value criteria) and the solution space (solution statement, goals, scope, constraints), and pain point to solution mapping.
+### File header conventions
 
-## Prerequisites
+Every new source file must begin with a copyright notice and license
+identifier. Use the comment syntax for the file type:
 
-Before starting, the developer must provide (or the LLM must ask for):
+| File type | Comment syntax |
+|-----------|---------------|
+| Shell, YAML, Makefile | `#` |
+| JavaScript, TypeScript, Go, Java, C/C++ | `//` or `/* */` |
+| HTML, Svelte, XML | `<!-- -->` |
+| CSS, SCSS | `/* */` |
 
-1. **A project idea** -- a short description of what the project should do (a few sentences to a few paragraphs). This is often documented in a `docs/specs/idea.md` file.
+**This project's header:**
 
-## Steps
+- **Copyright**: `Copyright (c) 2025 Pointmatic`
+- **SPDX identifier**: `SPDX-License-Identifier: Apache-2.0`
 
-1. Define the problem space 
-   - problem_statement: A few sentences describing the problem, plus any other useful context, examples, or references
-   - problem_why: Root causes of the problem and why the problem persists
-   - pain_points: A list of points 
-   - target_users: A description of those impacted by the problem (positively/negatively, directly/indirectly)
-   - value_criteria: How to measure solution value
-2. Define the solution space 
-   - one_liner: A catchy, benefit-oriented phrase starting with a verb that completes the sentence "This project <one_liner>."
-   - solution_statement: A few sentences that describe the solution in action, benefitting the target users, with some hints at technical approach
-   - goals: How the solution addresses the value criteria
-   - scope: What the solution will and won't do
-   - constraints: Technical, regulatory, or business limitations
-3. Map pain points to solution
-   - pain_point_to_solution_mapping: A mapping of pain point labels to descriptions on how the solution addresses the pain in the pain_point_to_solution_mapping format below.
-4. Write the completed document to `docs/specs/concept.md`.
-
-## Formats
-
-### pain_points
-
-```markdown
-- **<pain_point_label_1>**: <pain_point_description_1>
-- **<pain_point_label_2>**: <pain_point_description_2>
-- ...
+Shell example:
+```bash
+# Copyright (c) 2025 Pointmatic
+# SPDX-License-Identifier: Apache-2.0
 ```
 
-### pain_point_to_solution_mapping
-
-```markdown
-**<pain_point_label_1>**: 
-  - <solution_description_1>
-  - <solution_description_2>
-  ...
-**<pain_point_label_2>**: 
-  - <solution_description_1>
-  - <solution_description_2>
-  ...
-...
+YAML example:
+```yaml
+# Copyright (c) 2025 Pointmatic
+# SPDX-License-Identifier: Apache-2.0
 ```
 
-**After completing all steps below**, prompt the user to change modes:
+### Standalone scripts — no shared source file
+
+The color constants, symbols, and helper functions (`banner`, `info`, `success`, `warn`, `fail`, `confirm`, `ask_yn`, `divider`, `run_cmd`) are **duplicated** in every script (`git-push.sh`, `git-tag.sh`). Do **not** extract them into a shared `lib.sh` or sourced file. Each script must be fully self-contained with zero file dependencies — this is a deliberate design choice for Homebrew distribution simplicity.
+
+If a helper changes, update it in **every** script.
+
+### `.sh` extension in repo, dropped on install
+
+Source files in the repository use the `.sh` extension (`git-push.sh`, `git-tag.sh`). Homebrew installs them without the extension (`git-push`, `git-tag`) so git discovers them as subcommands. Always edit the `.sh` files in the repo — never edit installed copies.
+
+### `confirm()` vs `ask_yn()` — different control flow
+
+These two prompt functions have **different** control flow and must not be confused:
+
+- **`confirm()`** — `[Y/n]`, default yes. On "n", **exits the script with code 0** (clean abort). Use for gates where aborting means stopping everything.
+- **`ask_yn()`** — `[y/N]`, default no. On "n", **returns 1** (false). The caller decides what to do. Use for optional actions where "no" means skip and continue.
+
+Mixing them up causes scripts to exit when they should continue, or continue when they should abort.
+
+### Numeric tag sorting, not lexicographic
+
+Tags must be sorted **numerically** by major.minor.patch — `v1.10.0` comes after `v1.9.0`. Never use plain `sort` or `sort -V` (which is not available on all platforms). Use:
 
 ```bash
-project-guide mode plan_features
+sort -t. -k1,1n -k2,2n -k3,3n
 ```
+
+(after stripping the `v` prefix for sorting purposes).
+
+### Never `--force`, only `--force-with-lease`
+
+This is a **hard rule**. No script in this project may ever use `git push --force`. The only permitted force-push variant is `--force-with-lease`, which refuses to overwrite remote commits that you haven't seen locally. This applies to amend mode, pre-commit hook fold-in, and any push retry flow.
+
 
 ---
 
+# code_direct mode (cycle)
+
+> Generate code directly, test after
+
+
+Implement stories rapidly with direct commits to main. Focus on feature completion and iteration speed over process overhead.
+
+**Next Action**
+Restart the cycle of steps. 
+
+---
+
+
+## Cycle Steps
+
+For each story:
+
+1. **Read** the story's checklist from `docs/specs/stories.md`
+2. **Implement** all tasks in the checklist
+3. **Add copyright/license headers** to every new source file
+4. **Run tests** -- `pyve run pytest` (fix failures before continuing)
+5. **Run linting** -- fix any issues immediately
+6. **Mark tasks** as `[x]` in `stories.md` and change story suffix to `[Done]`
+7. **Bump version** in package manifest and source (if the story has a version)
+8. **Update CHANGELOG.md** with the version entry
+9. **Present** the completed story concisely: what changed (files + line refs), verification results (test counts, lint status), and the suggested next story. Do not propose commits, pushes, or bundling options. Do not offer "want me to also…?" follow-ups.
+10. **Wait** for the developer to say "go" before starting the next story
+
+## Velocity Practices
+
+**LLM's role in each cycle:**
+
+- **Version bump per story** -- v0.1.0, v0.2.0, v0.3.0, etc. — bump in package manifest and source
+- **Minimal process overhead** -- focus on making it work, not making it perfect
+- **Tests run after every story** -- not after every file, but before presenting to developer
+- **Fix linting immediately** -- small incremental fixes, not batch cleanup
+- **Update CHANGELOG.md** with the version entry before presenting
+
+**Developer's role (do NOT prompt for, offer, or initiate):**
+
+- **Direct commits to main** -- no branches, no PRs, no code review (velocity convention)
+- **Commit messages** reference story IDs: `"Story A.a: v0.1.0 Hello World"`
+- **Decides when to commit** -- the LLM presents, the developer commits. Multiple stories may be bundled into one commit at the developer's discretion — that is not the LLM's call to make or suggest.
+
+## Story Ordering
+
+- Start with Story A.a (Hello World) if not yet implemented
+- If unclear which story is next, ask: "Which story should I work on next?"
+- Never skip ahead -- complete stories in order within each phase
+
+## File Header Reminder
+
+Every new source file must include the copyright and license header as the very first content (before code, docstrings, or imports).
+
+## When to Switch Modes
+
+Switch to **code_test_first** when:
+- Working on a story with complex logic that benefits from TDD
+- The developer requests test-first approach
+
+Switch to **debug** when:
+- A bug is discovered during implementation
+- Tests are failing unexpectedly
+
+Switch to **production mode** when:
+- CI/CD phase is complete and branch protection is enabled
+- The project is ready for public users
 
