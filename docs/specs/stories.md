@@ -87,20 +87,20 @@ Implement the core tag-and-push workflow with confirmation gates.
 
 ## Phase C: Testing
 
-### Story C.a: v0.6.0 Test Infrastructure — BATS Setup [Planned]
+### Story C.a: v0.6.0 Test Infrastructure — BATS Setup [Done]
 
 Set up the BATS test framework and shared test helpers.
 
-- [ ] Create `tests/test_helper/common-setup.bash` with:
+- [x] Create `tests/test_helper/common-setup.bash` with:
   - `setup()` — create temp dir, `git init`, configure user.email/user.name
   - `teardown()` — `rm -rf` temp dir
   - Helper to create a bare remote in the temp dir for push tests
-- [ ] Create `tests/git-tag.bats` with a single smoke test that sources common-setup and runs `git-tag.sh --help` or a trivial invocation
-- [ ] Create `tests/git-push.bats` with a single smoke test
-- [ ] Confirm BATS runs locally: `bats tests/`
-- [ ] Bump version to v0.6.0
-- [ ] Update CHANGELOG.md
-- [ ] Verify: `bats tests/` passes with 2 smoke tests
+- [x] Create `tests/git-tag.bats` with a single smoke test that sources common-setup and runs `git-tag.sh --help` or a trivial invocation
+- [x] Create `tests/git-push.bats` with a single smoke test
+- [x] Confirm BATS runs locally: `bats tests/`
+- [x] Bump version to v0.6.0
+- [x] Update CHANGELOG.md
+- [x] Verify: `bats tests/` passes with 2 smoke tests
 
 ### Story C.b: v0.7.0 git-tag Tests [Planned]
 

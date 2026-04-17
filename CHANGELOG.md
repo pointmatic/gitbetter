@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] — 2025-04-16
+
+### Added
+
+- BATS test infrastructure: `tests/test_helper/common-setup.bash` with isolated temp-repo setup/teardown and bare-remote helper
+- `tests/git-tag.bats` smoke test (missing-argument usage/exit)
+- `tests/git-push.bats` smoke test (missing-argument usage/exit)
+
 ## [0.5.0] — 2025-04-16
 
 ### Added
