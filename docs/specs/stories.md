@@ -49,16 +49,16 @@ Throwaway verification that the full tag-create-and-push flow works in an isolat
 
 ## Phase B: Core — git-tag Implementation
 
-### Story B.a: v0.3.0 Semver Validation [Planned]
+### Story B.a: v0.3.0 Semver Validation [Done]
 
 Add input validation so `git-tag.sh` rejects invalid tag formats before any git operations.
 
-- [ ] Implement semver regex validation: `^v[0-9]+\.[0-9]+\.[0-9]+$`
-- [ ] Fail with descriptive error and expected format if validation fails
-- [ ] Fail with usage message if no tag argument provided
-- [ ] Bump version to v0.3.0
-- [ ] Update CHANGELOG.md
-- [ ] Verify: `./git-tag.sh v1.0.0` passes; `./git-tag.sh 1.0.0`, `./git-tag.sh v1.0`, `./git-tag.sh vabc` all fail with clear errors
+- [x] Implement semver regex validation: `^v[0-9]+\.[0-9]+\.[0-9]+$`
+- [x] Fail with descriptive error and expected format if validation fails
+- [x] Fail with usage message if no tag argument provided
+- [x] Bump version to v0.3.0
+- [x] Update CHANGELOG.md
+- [x] Verify: `./git-tag.sh v1.0.0` passes; `./git-tag.sh 1.0.0`, `./git-tag.sh v1.0`, `./git-tag.sh vabc` all fail with clear errors
 
 ### Story B.b: v0.4.0 Duplicate Tag Detection and Latest Tag Display [Planned]
 

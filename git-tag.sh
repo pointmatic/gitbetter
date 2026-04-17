@@ -59,6 +59,14 @@ BRANCH_NAME="${2:-}"
     exit 1
 }
 
+# ── Validate Tag Format ─────────────────────────────────────
+SEMVER_RE='^v[0-9]+\.[0-9]+\.[0-9]+$'
+if [[ ! "${TAG}" =~ ${SEMVER_RE} ]]; then
+    echo -e "\n  ${CROSS} ${R}Invalid tag format:${RESET} ${BOLD}${TAG}${RESET}"
+    echo -e "  ${DIM}Expected format: ${RESET}${C}vX.Y.Z${RESET} ${DIM}(e.g., v1.0.0, v0.2.3, v10.20.30)${RESET}\n"
+    exit 1
+fi
+
 # ── Validate Environment ────────────────────────────────────
 git rev-parse --is-inside-work-tree &>/dev/null \
     || fail "Not inside a git repository."
