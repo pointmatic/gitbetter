@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] — 2025-04-16
+
+### Added
+
+- GitHub Actions CI workflow (`.github/workflows/ci.yml`) — runs ShellCheck on `git-push.sh` and `git-tag.sh`, installs BATS via `bats-core/bats-action`, and runs the full `bats tests/` suite on every push to `main` and pull request to `main`
+- `.gitignore` entries for BATS helper lib clones (`tests/test_helper/bats-support/`, `tests/test_helper/bats-assert/`)
+
+### Fixed
+
+- Verified `git-push.sh`, `git-tag.sh`, and `scripts/spike-tag.sh` pass ShellCheck with no warnings
+
 ## [0.8.0] — 2025-04-16
 
 ### Added

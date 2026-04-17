@@ -132,20 +132,20 @@ BATS tests for `git-push.sh` argument parsing and validation.
 
 ## Phase D: CI/CD & Distribution
 
-### Story D.a: v0.9.0 CI Pipeline — ShellCheck + BATS [Planned]
+### Story D.a: v0.9.0 CI Pipeline — ShellCheck + BATS [Done]
 
 Set up GitHub Actions to lint and test on every push and PR.
 
-- [ ] Create `.github/workflows/ci.yml`:
+- [x] Create `.github/workflows/ci.yml`:
   - Trigger on push to `main` and pull requests to `main`
   - Install shellcheck
   - Install bats-core, bats-support, bats-assert
   - Run `shellcheck git-push.sh git-tag.sh`
   - Run `bats tests/`
-- [ ] Fix any shellcheck warnings in `git-push.sh` and `git-tag.sh`
-- [ ] Bump version to v0.9.0
-- [ ] Update CHANGELOG.md
-- [ ] Verify: push to main triggers CI; all checks pass
+- [x] Fix any shellcheck warnings in `git-push.sh` and `git-tag.sh`
+- [x] Bump version to v0.9.0
+- [x] Update CHANGELOG.md
+- [x] Verify: push to main triggers CI; all checks pass
 
 ### Story D.b: v1.0.0 Homebrew Formula Auto-Bump [Planned]
 

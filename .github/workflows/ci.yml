@@ -1,0 +1,36 @@
+# Copyright (c) 2025 Pointmatic
+# SPDX-License-Identifier: Apache-2.0
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    name: ShellCheck + BATS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck
+        run: shellcheck git-push.sh git-tag.sh
+
+      - name: Install bats-core, bats-support, bats-assert
+        uses: bats-core/bats-action@3.0.0
+        with:
+          bats-version: 1.11.0
+          support-install: true
+          assert-install: true
+          detik-install: false
+          file-install: false
+
+      - name: Run BATS tests
+        run: bats tests/
