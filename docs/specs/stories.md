@@ -117,18 +117,18 @@ Comprehensive BATS tests for `git-tag.sh`.
 - [x] Update CHANGELOG.md
 - [x] Verify: `bats tests/git-tag.bats` — all tests pass
 
-### Story C.c: v0.8.0 git-push Tests [Planned]
+### Story C.c: v0.8.0 git-push Tests [Done]
 
 BATS tests for `git-push.sh` argument parsing and validation.
 
-- [ ] Test: missing commit message → prints usage, exits 1
-- [ ] Test: commit message sanitization (backticks stripped, `"` → `'`)
-- [ ] Test: empty message after sanitization → fails with error
-- [ ] Test: `--amend` flag parsed correctly
-- [ ] Test: positional args (message, branch) parsed correctly
-- [ ] Bump version to v0.8.0
-- [ ] Update CHANGELOG.md
-- [ ] Verify: `bats tests/git-push.bats` — all tests pass
+- [x] Test: missing commit message → prints usage, exits 1
+- [x] Test: commit message sanitization (backticks stripped, `"` → `'`)
+- [x] Test: empty message after sanitization → fails with error
+- [x] Test: `--amend` flag parsed correctly
+- [x] Test: positional args (message, branch) parsed correctly
+- [x] Bump version to v0.8.0
+- [x] Update CHANGELOG.md
+- [x] Verify: `bats tests/git-push.bats` — all tests pass
 
 ## Phase D: CI/CD & Distribution
 
