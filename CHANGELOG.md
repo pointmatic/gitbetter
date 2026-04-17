@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2025-04-16
+
+### Added
+
+- Comprehensive `git-tag.sh` BATS tests (13 cases): missing arg, valid semver acceptance, invalid format rejection, duplicate detection, numeric tag sort, no-tags display, and end-to-end create+push verification against a bare remote
+
 ## [0.6.0] — 2025-04-16
 
 ### Added

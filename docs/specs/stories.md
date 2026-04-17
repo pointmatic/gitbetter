@@ -102,20 +102,20 @@ Set up the BATS test framework and shared test helpers.
 - [x] Update CHANGELOG.md
 - [x] Verify: `bats tests/` passes with 2 smoke tests
 
-### Story C.b: v0.7.0 git-tag Tests [Planned]
+### Story C.b: v0.7.0 git-tag Tests [Done]
 
 Comprehensive BATS tests for `git-tag.sh`.
 
-- [ ] Test: missing tag argument → prints usage, exits 1
-- [ ] Test: valid semver tags accepted (`v0.0.1`, `v1.0.0`, `v10.20.30`)
-- [ ] Test: invalid tags rejected (`1.0.0`, `v1.0`, `v1.2.3.4`, `vabc`, `v1.2.3-beta`)
-- [ ] Test: duplicate tag detected → fails with "already exists"
-- [ ] Test: latest tag sorted numerically (`v1.10.0` after `v1.9.0`)
-- [ ] Test: tag created and pushed to remote successfully
-- [ ] Test: no tags exist → "No tags found" displayed, proceeds normally
-- [ ] Bump version to v0.7.0
-- [ ] Update CHANGELOG.md
-- [ ] Verify: `bats tests/git-tag.bats` — all tests pass
+- [x] Test: missing tag argument → prints usage, exits 1
+- [x] Test: valid semver tags accepted (`v0.0.1`, `v1.0.0`, `v10.20.30`)
+- [x] Test: invalid tags rejected (`1.0.0`, `v1.0`, `v1.2.3.4`, `vabc`, `v1.2.3-beta`)
+- [x] Test: duplicate tag detected → fails with "already exists"
+- [x] Test: latest tag sorted numerically (`v1.10.0` after `v1.9.0`)
+- [x] Test: tag created and pushed to remote successfully
+- [x] Test: no tags exist → "No tags found" displayed, proceeds normally
+- [x] Bump version to v0.7.0
+- [x] Update CHANGELOG.md
+- [x] Verify: `bats tests/git-tag.bats` — all tests pass
 
 ### Story C.c: v0.8.0 git-push Tests [Planned]
 
