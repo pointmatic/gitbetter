@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] — 2025-04-17
+
+First stable release.
+
+### Added
+
+- `.github/workflows/homebrew.yml` — auto-bumps the `pointmatic/tap` Homebrew formula when a `v*` tag is pushed, using `dawidd6/action-homebrew-bump-formula@v4`
+- README "For Maintainers" section documenting the required `HOMEBREW_TAP_TOKEN` repository secret
+
 ## [0.9.0] — 2025-04-16
 
 ### Added

@@ -147,18 +147,18 @@ Set up GitHub Actions to lint and test on every push and PR.
 - [x] Update CHANGELOG.md
 - [x] Verify: push to main triggers CI; all checks pass
 
-### Story D.b: v1.0.0 Homebrew Formula Auto-Bump [Planned]
+### Story D.b: v1.0.0 Homebrew Formula Auto-Bump [Done]
 
 Set up the GitHub Action to update the Homebrew formula on tag push.
 
-- [ ] Create `.github/workflows/homebrew.yml`:
+- [x] Create `.github/workflows/homebrew.yml`:
   - Trigger on push of tags matching `v*`
   - Use `dawidd6/action-homebrew-bump-formula@v4`
   - Configure: `token: ${{ secrets.HOMEBREW_TAP_TOKEN }}`, `tap: pointmatic/tap`, `formula: gitbetter`, `tag: ${{ github.ref_name }}`
-- [ ] Document the `HOMEBREW_TAP_TOKEN` secret requirement in README.md (for maintainers)
-- [ ] Bump version to v1.0.0
-- [ ] Update CHANGELOG.md
-- [ ] Verify: push tag `v1.0.0` triggers the homebrew workflow
+- [x] Document the `HOMEBREW_TAP_TOKEN` secret requirement in README.md (for maintainers)
+- [x] Bump version to v1.0.0
+- [x] Update CHANGELOG.md
+- [x] Verify: push tag `v1.0.0` triggers the homebrew workflow
 
 ## Phase E: Documentation & Release
 

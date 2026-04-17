@@ -41,6 +41,14 @@ Tags are validated against `vX.Y.Z` format. The most recent tag is displayed (so
 - Git ≥ 2.30
 - macOS or Linux
 
+## For Maintainers
+
+### Homebrew formula auto-bump
+
+Pushing a tag matching `v*` triggers `.github/workflows/homebrew.yml`, which updates the `gitbetter` formula in `pointmatic/homebrew-tap` via [`dawidd6/action-homebrew-bump-formula`](https://github.com/dawidd6/action-homebrew-bump-formula).
+
+**Required repository secret:** `HOMEBREW_TAP_TOKEN` — a GitHub personal access token (fine-grained or classic) with `contents: write` permission on `pointmatic/homebrew-tap`. Set it under **Settings → Secrets and variables → Actions**.
+
 ## License
 
 [Apache-2.0](LICENSE) — Copyright (c) 2025 Pointmatic

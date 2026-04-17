@@ -1,0 +1,22 @@
+# Copyright (c) 2025 Pointmatic
+# SPDX-License-Identifier: Apache-2.0
+name: Homebrew Formula Bump
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  bump-formula:
+    name: Update pointmatic/tap formula
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Bump Homebrew formula
+        uses: dawidd6/action-homebrew-bump-formula@v4
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          tap: pointmatic/tap
+          formula: gitbetter
+          tag: ${{ github.ref_name }}
