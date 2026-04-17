@@ -21,7 +21,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
       - name: Run shellcheck
-        run: shellcheck git-push.sh git-tag.sh
+        run: shellcheck git-push.sh git-tag.sh lib/ui.sh
 
       - name: Install bats-core, bats-support, bats-assert
         uses: bats-core/bats-action@3.0.0

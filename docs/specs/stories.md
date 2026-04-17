@@ -160,27 +160,28 @@ Set up the GitHub Action to update the Homebrew formula on tag push.
 - [x] Update CHANGELOG.md
 - [x] Verify: push tag `v1.0.0` triggers the homebrew workflow
 
-### Story D.c: v1.0.1 Refactor — Extract `lib/ui.sh` [Planned]
+### Story D.c: v1.0.1 Refactor — Extract 'lib/ui.sh' [Done]
 
 Refactor the duplicated UI helper block out of `git-push.sh` and `git-tag.sh` into a single sourced library. Behavior-preserving — all existing tests must still pass unchanged.
 
-- [ ] Create `lib/ui.sh` with copyright header and `set` guards safe for sourcing (no `set -euo pipefail` at the top of `ui.sh`)
-- [ ] Move into `lib/ui.sh`: color constants (`R`, `G`, `Y`, `B`, `C`, `M`, `DIM`, `BOLD`, `RESET`, `CHECK`, `CROSS`, `ARROW`, `WARN`) and helper functions (`banner`, `info`, `success`, `warn`, `fail`, `confirm`, `ask_yn`, `divider`, `run_cmd`)
-- [ ] Add new helpers in `lib/ui.sh`: `header_box "<title>"` and `footer_box` (extract existing inline echo blocks from `git-push.sh` / `git-tag.sh`)
-- [ ] Add constants in `lib/ui.sh`: `GITBETTER_VERSION="1.0.1"` and `GITBETTER_HOMEPAGE="https://github.com/pointmatic/gitbetter"`
-- [ ] In `git-push.sh` and `git-tag.sh`: replace the duplicated block with:
+- [x] Create `lib/ui.sh` with copyright header and `set` guards safe for sourcing (no `set -euo pipefail` at the top of `ui.sh`)
+- [x] Move into `lib/ui.sh`: color constants (`R`, `G`, `Y`, `B`, `C`, `M`, `DIM`, `BOLD`, `RESET`, `CHECK`, `CROSS`, `ARROW`, `WARN`) and helper functions (`banner`, `info`, `success`, `warn`, `fail`, `confirm`, `ask_yn`, `divider`, `run_cmd`)
+- [x] Add new helpers in `lib/ui.sh`: `header_box "<title>"` and `footer_box` (extract existing inline echo blocks from `git-push.sh` / `git-tag.sh`)
+- [x] Add constants in `lib/ui.sh`: `GITBETTER_VERSION="1.0.1"` and `GITBETTER_HOMEPAGE="https://github.com/pointmatic/gitbetter"`
+- [x] In `git-push.sh` and `git-tag.sh`: replace the duplicated block with:
   ```bash
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
   # shellcheck source=lib/ui.sh
   source "${SCRIPT_DIR}/lib/ui.sh"
   ```
-- [ ] Replace inline header/footer echo blocks in both scripts with `header_box "<cmd>"` / `footer_box` calls
-- [ ] Update `tests/test_helper/common-setup.bash` — no change expected; tests run the scripts, which find `lib/ui.sh` relative to their own directory
-- [ ] Update `scripts/spike-tag.sh` if it references any removed block (unlikely)
-- [ ] Update `.github/workflows/ci.yml`: `shellcheck` command must include `lib/ui.sh`
-- [ ] Bump version to v1.0.1
-- [ ] Update CHANGELOG.md
-- [ ] Verify: `shellcheck` clean on all `.sh` files; `bats tests/` passes; `./scripts/spike-tag.sh` passes
+- [x] Replace inline header/footer echo blocks in both scripts with `header_box "<cmd>"` / `footer_box` calls
+- [x] `tests/test_helper/common-setup.bash` — no change needed; tests run the scripts, which find `lib/ui.sh` relative to their own directory
+- [x] `scripts/spike-tag.sh` — no changes needed; passes `shellcheck`
+- [x] Update `.github/workflows/ci.yml`: `shellcheck` command now includes `lib/ui.sh`
+- [x] Bump version to v1.0.1 (set in `lib/ui.sh` as `GITBETTER_VERSION`)
+- [x] Update CHANGELOG.md
+- [x] Verify: `shellcheck git-push.sh git-tag.sh lib/ui.sh scripts/spike-tag.sh` clean; `bats tests/` passes (21/21)
+- [ ] **Before tagging v1.0.1**: update `pointmatic/homebrew-tap/Formula/gitbetter.rb` install method from `bin.install "git-push.sh" => "git-push"` (v1.0.0 shape) to the libexec+wrapper shape (see `tech-spec.md` Homebrew Formula section). Without this, `brew install` will break at v1.0.1 because scripts now source `lib/ui.sh` relative to their own directory.
 
 ### Story D.d: v1.1.0 `gitbetter` umbrella + `--help` and `--version` flags [Planned]
 

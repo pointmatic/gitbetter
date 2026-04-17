@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] — 2025-04-17
+
+Refactor-only release. Behavior-preserving extraction of shared UI helpers.
+
+### Added
+
+- `lib/ui.sh` — single sourced library containing color constants, symbols, helper functions (`banner`, `info`, `success`, `warn`, `fail`, `confirm`, `ask_yn`, `divider`, `run_cmd`), new rounded-box helpers (`header_box`, `footer_box`), and project constants (`GITBETTER_VERSION`, `GITBETTER_HOMEPAGE`)
+
+### Changed
+
+- `git-push.sh` and `git-tag.sh` now source `lib/ui.sh` via `SCRIPT_DIR`-relative resolution (with `pwd -P` to follow symlinks) instead of duplicating the full UI helper block in each script
+- Inline header/footer rounded-corner boxes in both scripts replaced with `header_box "<command>"` and `footer_box` calls
+- CI (`.github/workflows/ci.yml`) now lints `lib/ui.sh` in addition to the command scripts
+
 ## [1.0.0] — 2025-04-17
 
 First stable release.
