@@ -46,11 +46,15 @@ No runtime libraries, no Python, no Node, no compiled code.
 
 ```
 gitbetter/
-├── git-push.sh                  # git-push command script (exists)
-├── git-tag.sh                   # git-tag command script (to write)
+├── gitbetter.sh                 # Umbrella info command (--help, --version)
+├── git-push.sh                  # git-push command script
+├── git-tag.sh                   # git-tag command script
+├── lib/
+│   └── ui.sh                    # Shared UI helpers + version/homepage constants
 ├── tests/
 │   ├── test_helper/
 │   │   └── common-setup.bash    # Shared BATS test setup (temp repo, helpers)
+│   ├── gitbetter.bats           # BATS tests for gitbetter umbrella command
 │   ├── git-push.bats            # BATS tests for git-push
 │   └── git-tag.bats             # BATS tests for git-tag
 ├── .github/
@@ -76,6 +80,7 @@ gitbetter/
 | File Type | Convention | Examples |
 |-----------|------------|----------|
 | **Command scripts** | `git-<command>.sh` (hyphenated, `.sh` extension) | `git-push.sh`, `git-tag.sh` |
+| **Library scripts** | `<name>.sh` in `lib/` (sourced by command scripts) | `lib/ui.sh` |
 | **Test files** | `git-<command>.bats` (matches script name) | `git-push.bats`, `git-tag.bats` |
 | **Test helpers** | `<name>.bash` (`.bash` extension for sourced files) | `common-setup.bash` |
 | **GitHub workflows** | Hyphens, lowercase | `ci.yml`, `homebrew.yml` |
@@ -85,9 +90,28 @@ gitbetter/
 
 ## Key Component Design
 
-### Shared Constants & Helpers
+### Shared UI Library (`lib/ui.sh`)
 
-Both `git-push.sh` and `git-tag.sh` must define an identical block of color constants, symbols, and helper functions at the top of the script. These are **duplicated** (not sourced from a shared file) to keep each script fully standalone with zero file dependencies.
+All color constants, symbols, and helper functions live in a single sourced library, `lib/ui.sh`. Every command script sources it at the top:
+
+```bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=lib/ui.sh
+source "${SCRIPT_DIR}/lib/ui.sh"
+```
+
+`pwd -P` resolves symlinks so `lib/ui.sh` is found even if the command is invoked via a symlinked entry on `PATH`. Homebrew installation places both the command scripts and `lib/` into `libexec/` together; see [Homebrew Formula](#homebrew-formula) for details.
+
+When a helper changes, update it only in `lib/ui.sh` — all commands pick it up automatically.
+
+#### Shared Constants
+
+```bash
+GITBETTER_VERSION="1.1.0"
+GITBETTER_HOMEPAGE="https://github.com/pointmatic/gitbetter"
+```
+
+Single source of truth for the version number and project homepage URL. Bumped whenever a story bumps the product version.
 
 #### Color Constants
 
@@ -99,7 +123,7 @@ CHECK="${G}✔${RESET}"   CROSS="${R}✘${RESET}"   ARROW="${C}▸${RESET}"
 WARN="${Y}⚠${RESET}"
 ```
 
-#### Helper Functions
+#### Helper Functions (provided by `lib/ui.sh`)
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
@@ -112,8 +136,11 @@ WARN="${Y}⚠${RESET}"
 | `ask_yn` | `ask_yn "Prompt text"` | `[y/N]` prompt, default no; returns 0/1 |
 | `divider` | `divider` | Prints a dimmed horizontal rule |
 | `run_cmd` | `run_cmd git add -A` | Echoes `$ git add -A` dimmed, then executes |
+| `header_box` | `header_box "git-push"` | Prints the cyan rounded-corner header box with the given title |
+| `footer_box` | `footer_box` | Prints the green rounded-corner footer box with "✔ All done." |
+| `print_version` | `print_version [subcommand]` | Prints `gitbetter[ <subcommand>] v<GITBETTER_VERSION>` followed by the homepage URL. Called by every command's `--version` handler. |
 
-#### Header Box
+#### Header Box (rendered by `header_box "<command-name>"` inside `lib/ui.sh`)
 
 ```bash
 echo -e "  ${BOLD}${C}╭─────────────────────────────────────────╮${RESET}"
@@ -121,13 +148,37 @@ echo -e "  ${BOLD}${C}│${RESET}  ${BOLD}<command-name>${RESET}                
 echo -e "  ${BOLD}${C}╰─────────────────────────────────────────╯${RESET}"
 ```
 
-#### Footer Box
+#### Footer Box (rendered by `footer_box` inside `lib/ui.sh`)
 
 ```bash
 echo -e "  ${BOLD}${G}╭─────────────────────────────────────────╮${RESET}"
 echo -e "  ${BOLD}${G}│${RESET}  ${CHECK} ${BOLD}All done.${RESET}                            ${BOLD}${G}│${RESET}"
 echo -e "  ${BOLD}${G}╰─────────────────────────────────────────╯${RESET}"
 ```
+
+### gitbetter.sh (umbrella command)
+
+Pure info command. Does not perform git operations or dispatch to subcommands. See `features.md` FR-9 for behavior.
+
+| Aspect | Implementation |
+|--------|---------------|
+| **Argument parsing** | `case "${1:-}"` on first arg: empty or `--help` → `print_help`; `--version` → `print_version`; anything else → error to stderr, exit 1. |
+| **Help text** | Local `print_help()` function in `gitbetter.sh` — lists all gitbetter commands (`git-push`, `git-tag`), points users at `git-push --help` / `git-tag --help`, ends with `Homepage: ${GITBETTER_HOMEPAGE}`. |
+| **Version output** | `print_version` (from `lib/ui.sh`) called with no subcommand name. |
+| **Exit code** | 0 for help/version; 1 for unknown flag. |
+
+### Meta-flag handling in `git-push.sh` and `git-tag.sh`
+
+Both scripts handle `--help` and `--version` **before** any git-repo validation or other arg parsing, so the flags work outside a git repository.
+
+```bash
+case "${1:-}" in
+    --help)    print_help;    exit 0 ;;
+    --version) print_version "git-push"; exit 0 ;;
+esac
+```
+
+The `print_help()` function is defined locally in each script (since help text is per-command), while `print_version` is shared from `lib/ui.sh`.
 
 ### git-push.sh
 
@@ -178,6 +229,7 @@ No configuration files, no environment variables, no dotfiles. All behavior is d
 
 | Command | Usage | Description |
 |---------|-------|-------------|
+| `gitbetter` | `gitbetter [--help \| --version]` | Umbrella info command — lists subcommands, prints version |
 | `git-push` | `git-push [--amend] "message" [branch]` | Stage, commit, push, and optionally clean up |
 | `git-tag` | `git-tag <vX.Y.Z> [branch]` | Validate semver, create tag, push to origin |
 
@@ -190,7 +242,14 @@ No configuration files, no environment variables, no dotfiles. All behavior is d
 
 ### Shared Flags
 
-None. Each command has its own argument set. No global flags or shared option parsing.
+All three commands (`gitbetter`, `git-push`, `git-tag`) support:
+
+| Flag | Behavior |
+|------|----------|
+| `--help` | Print per-command help (usage, options, examples, homepage) and exit 0. Checked before any other processing. |
+| `--version` | Print `gitbetter[ <subcommand>] v<GITBETTER_VERSION>` followed by the homepage URL and exit 0. Checked before any other processing. |
+
+Only long-form flags; no `-h` / `-v` aliases (reserved for potential future use).
 
 ---
 
@@ -257,12 +316,20 @@ teardown() {
 
 ### Test Coverage
 
+**gitbetter.bats:**
+- No args → prints help, exits 0
+- `--help` → prints help (contains Usage, Commands, Homepage), exits 0
+- `--version` → prints `gitbetter v<VERSION>` and homepage URL, exits 0
+- Unknown flag → exits 1
+
 **git-push.bats:**
 - Missing commit message → prints usage, exits 1
 - Empty message after sanitization → fails with error
 - Backtick and quote sanitization produces correct message
 - `--amend` flag is parsed correctly
 - Positional args (message, branch) are parsed correctly
+- `--help` → exits 0 with full help text (Usage, Examples, Homepage)
+- `--version` → exits 0 with `gitbetter git-push v<VERSION>` and homepage URL
 
 **git-tag.bats:**
 - Missing tag argument → prints usage, exits 1
@@ -271,6 +338,8 @@ teardown() {
 - Duplicate tag detection → fails with "already exists"
 - Latest tag sorted numerically: `v1.9.0` < `v1.10.0`
 - Tag creation and push execute correct git commands
+- `--help` → exits 0 with full help text (Usage, Examples, Homepage)
+- `--version` → exits 0 with `gitbetter git-tag v<VERSION>` and homepage URL
 
 ### CI Integration
 
@@ -285,7 +354,46 @@ ShellCheck and BATS run on every push and pull request via `.github/workflows/ci
 - **Tap**: `pointmatic/tap` (hosted on GitHub as `pointmatic/homebrew-tap`)
 - **Formula name**: `gitbetter`
 - **Install method**: `brew install pointmatic/tap/gitbetter`
-- **What it installs**: `git-push.sh` and `git-tag.sh` into the Homebrew prefix bin directory, renamed to `git-push` and `git-tag` (dropping the `.sh` extension) so git discovers them as subcommands.
+- **What it installs**:
+  - Command scripts (`gitbetter.sh`, `git-push.sh`, `git-tag.sh`) and the `lib/` directory are installed into the formula's `libexec` path.
+  - Thin wrapper scripts are written to `bin/` as `gitbetter`, `git-push`, and `git-tag` (no `.sh` extension) so git discovers the hyphenated pair as subcommands. Each wrapper `exec`s its real script in `libexec`, preserving `$BASH_SOURCE[0]` resolution so `lib/ui.sh` is found at `<libexec>/lib/ui.sh`.
+
+  The formula lives in the `pointmatic/homebrew-tap` repository (not in this repo). The `url` and `sha256` fields are updated automatically by `dawidd6/action-homebrew-bump-formula` on every `v*` tag push (see [GitHub Actions — Formula Auto-Bump](#github-actions--formula-auto-bump)); all other fields are maintained manually.
+
+  ```ruby
+  class Gitbetter < Formula
+    desc "Streamline repetitive git workflows (push, tag) into single interactive commands"
+    homepage "https://github.com/pointmatic/gitbetter"
+    url "https://github.com/pointmatic/gitbetter/archive/refs/tags/vX.Y.Z.tar.gz"
+    sha256 "<updated-by-action-on-each-release>"
+    license "Apache-2.0"
+
+    def install
+      libexec.install "lib", "gitbetter.sh", "git-push.sh", "git-tag.sh"
+      (bin/"gitbetter").write <<~SH
+        #!/usr/bin/env bash
+        exec "#{libexec}/gitbetter.sh" "$@"
+      SH
+      (bin/"git-push").write <<~SH
+        #!/usr/bin/env bash
+        exec "#{libexec}/git-push.sh" "$@"
+      SH
+      (bin/"git-tag").write <<~SH
+        #!/usr/bin/env bash
+        exec "#{libexec}/git-tag.sh" "$@"
+      SH
+      chmod 0555, bin/"gitbetter", bin/"git-push", bin/"git-tag"
+    end
+
+    test do
+      assert_match "v#{version}", shell_output("#{bin}/gitbetter --version")
+      assert_match "v#{version}", shell_output("#{bin}/git-push --version")
+      assert_match "v#{version}", shell_output("#{bin}/git-tag --version")
+    end
+  end
+  ```
+
+  The `test do` block is required by `brew audit --strict` and exercised by `brew test gitbetter` and the tap's CI. It relies on the `--version` flag added in Story D.d.
 
 ### GitHub Actions — Formula Auto-Bump
 
@@ -328,7 +436,7 @@ jobs:
       - name: Install ShellCheck
         run: sudo apt-get install -y shellcheck
       - name: Lint
-        run: shellcheck git-push.sh git-tag.sh
+        run: shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh
       - name: Install BATS
         run: |
           git clone https://github.com/bats-core/bats-core.git /tmp/bats

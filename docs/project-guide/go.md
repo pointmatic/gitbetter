@@ -81,11 +81,21 @@ YAML example:
 # SPDX-License-Identifier: Apache-2.0
 ```
 
-### Standalone scripts — no shared source file
+### Shared UI library — `lib/ui.sh`
 
-The color constants, symbols, and helper functions (`banner`, `info`, `success`, `warn`, `fail`, `confirm`, `ask_yn`, `divider`, `run_cmd`) are **duplicated** in every script (`git-push.sh`, `git-tag.sh`). Do **not** extract them into a shared `lib.sh` or sourced file. Each script must be fully self-contained with zero file dependencies — this is a deliberate design choice for Homebrew distribution simplicity.
+Color constants, symbols, and helper functions (`banner`, `info`, `success`, `warn`, `fail`, `confirm`, `ask_yn`, `divider`, `run_cmd`, `header_box`, `footer_box`) live in `lib/ui.sh` and are sourced by every command script (`git-push.sh`, `git-tag.sh`). Update helpers in **`lib/ui.sh` only**, never duplicate them into individual command scripts.
 
-If a helper changes, update it in **every** script.
+Command scripts source the library using the script's own directory:
+
+```bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=lib/ui.sh
+source "${SCRIPT_DIR}/lib/ui.sh"
+```
+
+`pwd -P` resolves symlinks so the lib is found even when the script is reached via a PATH symlink.
+
+**Homebrew install shape:** the formula installs both the scripts and `lib/` into `libexec/`, then writes thin `bin/git-push` and `bin/git-tag` wrappers that `exec` the real scripts. This keeps `$BASH_SOURCE[0]` pointing at `<libexec>/git-<cmd>.sh`, so `lib/ui.sh` resolves correctly at runtime. See `tech-spec.md` for the full formula snippet.
 
 ### `.sh` extension in repo, dropped on install
 

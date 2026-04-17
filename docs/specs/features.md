@@ -12,8 +12,10 @@ Provide a set of Homebrew-installable Bash scripts that streamline repetitive gi
 
 ### Core Requirements
 
+- `gitbetter` — umbrella info command that lists all gitbetter commands, with `--help` (default) and `--version` flags
 - `git-push` — interactive stage → commit → push with amend support, pre-commit hook recovery, and branch-PR cleanup
 - `git-tag` — semver-validated tagging with latest-tag display and push to origin
+- Every command supports `--help` (full usage + examples) and `--version` (unified gitbetter version + homepage URL)
 - Homebrew tap distribution via `pointmatic/tap`
 - CI/CD via GitHub Actions (tests on push/PR, formula auto-bump on tag)
 
@@ -39,7 +41,8 @@ Provide a set of Homebrew-installable Bash scripts that streamline repetitive gi
 ### Usability Requirements
 
 - CLI tool for terminal-savvy developers
-- Each command is a standalone Bash script invoked as `git-push` or `git-tag` (leveraging git's subcommand discovery via PATH)
+- Each command is a Bash script invoked as `git-push` or `git-tag` (leveraging git's subcommand discovery via PATH)
+- Command scripts source shared UI helpers (colors, symbols, prompts, banners) from `lib/ui.sh` so every command has identical look-and-feel
 - Interactive prompts use `[Y/n]` (default yes) for expected actions and `[y/N]` (default no) for optional/destructive actions
 - Any step can be aborted cleanly by answering "n"
 
@@ -69,6 +72,24 @@ Provide a set of Homebrew-installable Bash scripts that streamline repetitive gi
 |---|---|---|
 | `tag` | Yes | A semver tag in `vX.Y.Z` format (first positional arg). X, Y, and Z must be non-negative integers. |
 | `[branch_name]` | No | Branch to push the tag to on origin (second positional arg). Defaults to the current branch. |
+| `--help` | No | Flag. Print full usage (description, usage lines, options, examples, homepage) and exit 0. Takes precedence over all other args. |
+| `--version` | No | Flag. Print `gitbetter git-tag v<VERSION>` and the homepage URL; exit 0. Takes precedence over all other args. |
+
+### `git-push` — additional meta flags
+
+| Argument | Required | Description |
+|---|---|---|
+| `--help` | No | Flag. Print full usage (description, usage lines, options, examples, homepage) and exit 0. Takes precedence over all other args. |
+| `--version` | No | Flag. Print `gitbetter git-push v<VERSION>` and the homepage URL; exit 0. Takes precedence over all other args. |
+
+### `gitbetter`
+
+| Argument | Required | Description |
+|---|---|---|
+| `--help` | No | Flag. Print umbrella help (description, list of commands, pointer to per-command help, homepage). Exit 0. Also the default behavior when no arguments are passed. |
+| `--version` | No | Flag. Print `gitbetter v<VERSION>` and the homepage URL; exit 0. |
+
+`gitbetter` takes no positional arguments and does **not** dispatch to subcommands. Users invoke `git-push` / `git-tag` directly; `gitbetter` exists solely for discoverability, help, and version reporting.
 
 ---
 
@@ -221,12 +242,32 @@ Install gitbetter commands via Homebrew.
 
 **Behavior:**
 1. Users install with `brew install pointmatic/tap/gitbetter`.
-2. Installation places `git-push` and `git-tag` scripts on the user's PATH.
-3. Git automatically discovers them as subcommands (e.g., `git push` vs `git-push` — the hyphenated versions are separate commands, not overrides).
+2. Installation places `gitbetter`, `git-push`, and `git-tag` command wrappers on the user's PATH and installs the command scripts plus `lib/ui.sh` into Homebrew's `libexec` (internal) location. Command wrappers exec the real scripts so `lib/ui.sh` resolves relative to the script's install directory.
+3. Git automatically discovers `git-push` and `git-tag` as subcommands (e.g., `git push` vs `git-push` — the hyphenated versions are separate commands, not overrides). `gitbetter` is invoked directly, not as a git subcommand.
 
 **Edge Cases:**
 - User has a conflicting `git-push` on PATH → Homebrew-installed version takes precedence based on PATH ordering; user is responsible for resolving conflicts.
 - Uninstall via `brew uninstall gitbetter` cleanly removes the scripts.
+
+### FR-9: `--help` and `--version` Meta Flags
+
+Every gitbetter command (`gitbetter`, `git-push`, `git-tag`) supports `--help` and `--version` flags with consistent behavior.
+
+**Behavior:**
+1. `--help` and `--version` are checked **before** any git-repository validation, semver validation, or message sanitization — they work outside a git repo and with invalid arguments.
+2. Either flag short-circuits all other processing: print the output and exit 0.
+3. `--version` output format is unified across all commands:
+   - `gitbetter v<VERSION>` (for `gitbetter`)
+   - `gitbetter <command-name> v<VERSION>` (for `git-push`, `git-tag`)
+   - Followed on the next line by the homepage URL: `https://github.com/pointmatic/gitbetter`
+4. `--help` output is per-command and includes: short description, usage lines (including the `--help` and `--version` invocations), options table, examples, and a `Homepage:` footer line.
+5. The version number is defined once (in `lib/ui.sh` as `GITBETTER_VERSION`) and is shared by all three commands.
+6. For `gitbetter` only, running with no arguments is equivalent to `--help` (exit 0). For `git-push` and `git-tag`, running with no arguments still prints a terse usage message and exits 1 (unchanged).
+
+**Edge Cases:**
+- Both `--help` and `--version` passed together → whichever appears first wins.
+- `--help` or `--version` passed alongside other arguments → the meta flag still short-circuits; other arguments are ignored.
+- Unknown flags (e.g., `-h`, `-v`, `--version=1`) → not supported; scripts treat them as positional args or fail with the existing usage message.
 
 ---
 
@@ -273,6 +314,8 @@ N/A — interactive terminal scripts with negligible overhead beyond the underly
 - [ ] `git-tag v1.0.0` validates semver, shows latest tag, creates and pushes the tag.
 - [ ] `git-tag` rejects invalid formats (`1.0.0`, `v1.0`, `vabc`, duplicate tags).
 - [ ] Both commands follow the shared UX pattern (header box, context, validation, proof, footer box).
+- [ ] `gitbetter`, `gitbetter --help`, `git-push --help`, `git-tag --help` all print usage and exit 0.
+- [ ] `gitbetter --version`, `git-push --version`, `git-tag --version` all print a unified `v<VERSION>` plus the homepage URL and exit 0, working outside a git repo.
 - [ ] All scripts pass `shellcheck` with no warnings.
 - [ ] CI runs on push/PR and formula update triggers on `v*` tag push.
-- [ ] `brew install pointmatic/tap/gitbetter` installs both commands and they are discoverable on PATH.
+- [ ] `brew install pointmatic/tap/gitbetter` installs all three commands (`gitbetter`, `git-push`, `git-tag`) and they are discoverable on PATH.
