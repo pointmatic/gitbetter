@@ -116,6 +116,14 @@ else
 fi
 success "Tag ${G}${TAG}${RESET} pushed to origin."
 
+# ── Outcome Proof ───────────────────────────────────────────
+banner "New Tag"
+echo ""
+git --no-pager show --no-patch --color=always \
+    --format="  %C(dim)%h%C(reset)  %C(green)%D%C(reset)  %s  %C(dim)(%ar by %an)%C(reset)" \
+    "${TAG}" 2>/dev/null || info "${G}${TAG}${RESET}"
+echo ""
+
 # ── Done ─────────────────────────────────────────────────────
 echo ""
 echo -e "  ${BOLD}${G}╭─────────────────────────────────────────╮${RESET}"

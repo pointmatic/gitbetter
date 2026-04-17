@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2025-04-16
+
+### Added
+
+- `git-tag.sh` outcome proof: after push, displays the new tag's commit SHA, refs, subject, and author via `git show --no-patch`
+
+### Changed
+
+- `git-tag.sh` tag creation and push workflow promoted from spike-support to first-class (confirmation prompt, `git tag`, `git push origin <TAG>` or `git push origin <TAG> <BRANCH>`)
+
 ## [0.4.0] — 2025-04-16
 
 ### Added

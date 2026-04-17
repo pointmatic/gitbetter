@@ -72,18 +72,18 @@ Show the most recent tag for context and prevent creating duplicate tags.
 - [x] Update CHANGELOG.md
 - [x] Verify: in a repo with tags `v1.9.0` and `v1.10.0`, latest shown is `v1.10.0`; creating a duplicate fails
 
-### Story B.c: v0.5.0 Tag Creation and Push [Planned]
+### Story B.c: v0.5.0 Tag Creation and Push [Done]
 
 Implement the core tag-and-push workflow with confirmation gates.
 
-- [ ] Add confirmation prompt: "Create and push tag `<tag>` to `origin`?"
-- [ ] Run `git tag "$TAG"` via `run_cmd`
-- [ ] Run `git push origin "$TAG"` via `run_cmd` (or `git push origin "$TAG" "$BRANCH_NAME"` if branch provided)
-- [ ] Display one-liner outcome proof (the new tag)
-- [ ] Print footer box with "✔ All done."
-- [ ] Bump version to v0.5.0
-- [ ] Update CHANGELOG.md
-- [ ] Verify: `./git-tag.sh v0.5.0` creates tag, pushes, and shows success footer
+- [x] Add confirmation prompt: "Create and push tag `<tag>` to `origin`?"
+- [x] Run `git tag "$TAG"` via `run_cmd`
+- [x] Run `git push origin "$TAG"` via `run_cmd` (or `git push origin "$TAG" "$BRANCH_NAME"` if branch provided)
+- [x] Display one-liner outcome proof (the new tag)
+- [x] Print footer box with "✔ All done."
+- [x] Bump version to v0.5.0
+- [x] Update CHANGELOG.md
+- [x] Verify: `./git-tag.sh v0.5.0` creates tag, pushes, and shows success footer
 
 ## Phase C: Testing
 
