@@ -52,11 +52,16 @@ run_cmd() {
 
 # ── Parse Arguments ──────────────────────────────────────────
 TAG="${1:-}"
+BRANCH_NAME="${2:-}"
 
 [[ -z "${TAG}" ]] && {
     echo -e "\n  ${BOLD}Usage:${RESET}  git-tag ${C}\"vX.Y.Z\"${RESET} ${DIM}[branch_name]${RESET}\n"
     exit 1
 }
+
+# ── Validate Environment ────────────────────────────────────
+git rev-parse --is-inside-work-tree &>/dev/null \
+    || fail "Not inside a git repository."
 
 # ── Summary Banner ───────────────────────────────────────────
 echo ""
@@ -65,6 +70,21 @@ echo -e "  ${BOLD}${C}│${RESET}  ${BOLD}git-tag${RESET}                       
 echo -e "  ${BOLD}${C}╰─────────────────────────────────────────╯${RESET}"
 echo ""
 info "${BOLD}Tag:${RESET}  ${G}${TAG}${RESET}"
+
+# ── Create & Push Tag ────────────────────────────────────────
+confirm "Create and push tag ${TAG} to origin?"
+
+banner "Tag"
+run_cmd git tag "${TAG}"
+success "Tag ${G}${TAG}${RESET} created."
+
+banner "Push"
+if [[ -n "${BRANCH_NAME}" ]]; then
+    run_cmd git push origin "${TAG}" "${BRANCH_NAME}"
+else
+    run_cmd git push origin "${TAG}"
+fi
+success "Tag ${G}${TAG}${RESET} pushed to origin."
 
 # ── Done ─────────────────────────────────────────────────────
 echo ""

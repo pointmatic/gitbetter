@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2025-04-16
+
+### Added
+
+- `scripts/spike-tag.sh` — throwaway end-to-end test proving tag-create-and-push flow works in an isolated temp repo
+- `git-tag.sh` now creates and pushes tags (minimal implementation for spike validation)
+
 ## [0.1.0] — 2025-04-16
 
 ### Added

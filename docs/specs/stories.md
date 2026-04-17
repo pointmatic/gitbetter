@@ -33,19 +33,19 @@ Create the smallest runnable `git-tag.sh` that proves the script structure, help
 - [x] Update CHANGELOG.md
 - [x] Verify: `./git-tag.sh v1.0.0` prints header box, tag, and footer box
 
-### Story A.c: v0.2.0 Spike — End-to-End Tag Flow in a Temp Repo [Planned]
+### Story A.c: v0.2.0 Spike — End-to-End Tag Flow in a Temp Repo [Done]
 
 Throwaway verification that the full tag-create-and-push flow works in an isolated environment before building production logic.
 
-- [ ] Create `scripts/spike-tag.sh` — a temporary script that:
+- [x] Create `scripts/spike-tag.sh` — a temporary script that:
   - Creates a temp directory with `git init`
   - Adds a dummy commit
   - Adds a bare remote (local bare repo)
   - Calls `git-tag.sh v0.0.1` and verifies the tag exists on the remote
-- [ ] Run the spike and confirm the tag appears on the remote
-- [ ] Bump version to v0.2.0
-- [ ] Update CHANGELOG.md
-- [ ] Verify: `./scripts/spike-tag.sh` completes without error and tag is on remote
+- [x] Run the spike and confirm the tag appears on the remote
+- [x] Bump version to v0.2.0
+- [x] Update CHANGELOG.md
+- [x] Verify: `./scripts/spike-tag.sh` completes without error and tag is on remote
 
 ## Phase B: Core — git-tag Implementation
 
