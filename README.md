@@ -61,6 +61,21 @@ Tags are validated against `vX.Y.Z` format. The most recent tag is displayed (so
 - Git ≥ 2.30
 - macOS or Linux
 
+## Development
+
+Run the test suite locally:
+
+```bash
+shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh
+bats tests/
+```
+
+BATS can be installed via Homebrew: `brew install bats-core`. Helper libraries `bats-support` and `bats-assert` are cloned into `tests/test_helper/` by the CI workflow; install them locally the same way if you want to run the full suite offline.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
+
 ## For Maintainers
 
 ### Homebrew formula auto-bump

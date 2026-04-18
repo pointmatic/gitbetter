@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-04-17
+
+Docs-only patch release (Story E.a). No behavior changes.
+
+### Added
+
+- README `Development` section with local `shellcheck` + `bats tests/` commands and BATS install guidance.
+- README `Changelog` section linking to `CHANGELOG.md`.
+
+### Removed
+
+- `scripts/spike-tag.sh` — throwaway end-to-end spike from Phase A.c. Its coverage is fully subsumed by the `git-tag.bats` suite, and the `scripts/` directory is now gone.
+
 ## [1.3.0] — 2025-04-17
 
 Branch-workflow simplification. The post-push branch cleanup flow now uses a single explicit prompt and a new `--keep` / `-k` flag, replacing the older two-step "wait for CI, then delete branch" interaction.
