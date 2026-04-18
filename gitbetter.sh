@@ -42,7 +42,7 @@ case "${1:-}" in
         exit 0
         ;;
     --version)
-        print_version
+        print_version ""
         exit 0
         ;;
     *)
