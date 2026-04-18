@@ -183,28 +183,30 @@ Refactor the duplicated UI helper block out of `git-push.sh` and `git-tag.sh` in
 - [x] Verify: `shellcheck git-push.sh git-tag.sh lib/ui.sh scripts/spike-tag.sh` clean; `bats tests/` passes (21/21)
 - [ ] **Before tagging v1.0.1**: update `pointmatic/homebrew-tap/Formula/gitbetter.rb` install method from `bin.install "git-push.sh" => "git-push"` (v1.0.0 shape) to the libexec+wrapper shape (see `tech-spec.md` Homebrew Formula section). Without this, `brew install` will break at v1.0.1 because scripts now source `lib/ui.sh` relative to their own directory.
 
-### Story D.d: v1.1.0 `gitbetter` umbrella + `--help` and `--version` flags [Planned]
+### Story D.d: v1.1.0 'gitbetter' umbrella + '--help' and '--version' flags [Done]
 
 Add a new `gitbetter` umbrella command plus `--help` and `--version` flags on all three commands. Version and homepage constants are unified via `lib/ui.sh` (requires D.c).
 
-- [ ] In `lib/ui.sh`: bump `GITBETTER_VERSION` to `1.1.0`
-- [ ] In `lib/ui.sh`: add `print_version [subcommand]` helper that prints `gitbetter[ <subcommand>] v<GITBETTER_VERSION>` followed by `<GITBETTER_HOMEPAGE>`
-- [ ] Create `gitbetter.sh` with copyright header, sources `lib/ui.sh`, defines local `print_help()` (description + Commands list pointing to `git-push`/`git-tag` + pointer to per-command `--help` + `Homepage:` line)
-- [ ] In `gitbetter.sh`: dispatch on first arg — empty/`--help` → `print_help`, exit 0; `--version` → `print_version`, exit 0; unknown → error to stderr, exit 1
-- [ ] Make `gitbetter.sh` executable (`chmod +x`)
-- [ ] In `git-push.sh`: add a local `print_help()` with Usage, Options (`--amend`, `--help`, `--version`), Examples, and `Homepage:` line
-- [ ] In `git-push.sh`: before any git validation or arg parsing, handle `--help` (exit 0) and `--version` via `print_version "git-push"` (exit 0)
-- [ ] In `git-tag.sh`: add a local `print_help()` with Usage, Options (`--help`, `--version`), Examples, and `Homepage:` line
-- [ ] In `git-tag.sh`: before any git validation or semver validation, handle `--help` and `--version` (same pattern as `git-push.sh`)
-- [ ] Create `tests/gitbetter.bats` with cases: no args → help+exit 0; `--help` → contains Usage/Commands/Homepage, exit 0; `--version` → contains `v1.1.0` and URL, exit 0; unknown flag → exit 1
-- [ ] Extend `tests/git-push.bats`: `--help` exits 0 with Usage/Examples/Homepage; `--version` exits 0 with `gitbetter git-push v1.1.0` and URL
-- [ ] Extend `tests/git-tag.bats`: same two cases with `gitbetter git-tag v1.1.0`
-- [ ] Update `.github/workflows/ci.yml`: include `gitbetter.sh` in the `shellcheck` command
-- [ ] Update `README.md`: add a short line about `gitbetter --help` as the entry point; add `--help` / `--version` to the command examples
-- [ ] Update the Homebrew formula install snippet in `tech-spec.md` — already reflects three wrappers, but verify still accurate
-- [ ] Bump version to v1.1.0 (already set above; confirm no drift)
-- [ ] Update CHANGELOG.md
-- [ ] Verify: `./gitbetter.sh` (no args), `./gitbetter.sh --help`, `./gitbetter.sh --version`, `./git-push.sh --help`, `./git-push.sh --version`, `./git-tag.sh --help`, `./git-tag.sh --version` all print expected output and exit 0; `--help`/`--version` still work when run outside a git repo; `bats tests/` passes
+- [x] In `lib/ui.sh`: bump `GITBETTER_VERSION` to `1.1.0`
+- [x] In `lib/ui.sh`: add `print_version [subcommand]` helper that prints `gitbetter[ <subcommand>] v<GITBETTER_VERSION>` followed by `<GITBETTER_HOMEPAGE>`
+- [x] Create `gitbetter.sh` with copyright header, sources `lib/ui.sh`, defines local `print_help()` (description + Commands list pointing to `git-push`/`git-tag` + pointer to per-command `--help` + `Homepage:` line)
+- [x] In `gitbetter.sh`: dispatch on first arg — empty/`--help` → `print_help`, exit 0; `--version` → `print_version`, exit 0; unknown → error to stderr, exit 1
+- [x] Make `gitbetter.sh` executable (`chmod +x`)
+- [x] In `git-push.sh`: add a local `print_help()` with Usage, Options (`--amend`, `--help`, `--version`), Examples, and `Homepage:` line
+- [x] In `git-push.sh`: before any git validation or arg parsing, handle `--help` (exit 0) and `--version` via `print_version "git-push"` (exit 0)
+- [x] In `git-tag.sh`: add a local `print_help()` with Usage, Options (`--help`, `--version`), Examples, and `Homepage:` line
+- [x] In `git-tag.sh`: before any git validation or semver validation, handle `--help` and `--version` (same pattern as `git-push.sh`)
+- [x] Create `tests/gitbetter.bats` with cases: no args → help+exit 0; `--help` → contains Usage/Commands/Homepage, exit 0; `--version` → contains `v1.1.0` and URL, exit 0; unknown flag → exit 1
+- [x] Extend `tests/git-push.bats`: `--help` exits 0 with Usage/Examples/Homepage; `--version` exits 0 with `gitbetter git-push v1.1.0` and URL; `--help` works outside a git repo
+- [x] Extend `tests/git-tag.bats`: same three cases with `gitbetter git-tag v1.1.0`
+- [x] Extend `tests/test_helper/common-setup.bash` to export `GITBETTER_SH` path
+- [x] Update `.github/workflows/ci.yml`: include `gitbetter.sh` in the `shellcheck` command
+- [x] Update `README.md`: add `gitbetter` entry point and `--help` / `--version` examples
+- [x] Homebrew formula install snippet in `tech-spec.md` already reflects three wrappers — verified
+- [x] Bump version to v1.1.0 in `lib/ui.sh`
+- [x] Update CHANGELOG.md
+- [x] Verify: `./gitbetter.sh`, `./gitbetter.sh --help`, `./gitbetter.sh --version`, `./git-push.sh --help`, `./git-push.sh --version`, `./git-tag.sh --help`, `./git-tag.sh --version` all print expected output and exit 0; `--help` works outside a git repo (covered by BATS); `shellcheck` clean; `bats tests/` passes (31/31)
+- [ ] **Before tagging v1.1.0**: update `pointmatic/homebrew-tap/Formula/gitbetter.rb` to also install `gitbetter.sh` and write a `bin/gitbetter` wrapper; add a `test do` block asserting `--version` on all three commands. See `tech-spec.md` Homebrew Formula section for the full template.
 
 ## Phase E: Documentation & Release
 

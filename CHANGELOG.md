@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] — 2025-04-17
+
+### Added
+
+- `gitbetter` — new umbrella info command. `gitbetter` (no args) or `gitbetter --help` prints an overview of all commands and points users at `git-push --help` / `git-tag --help`. `gitbetter --version` prints the project version and homepage URL. Does not perform git operations and does not dispatch to subcommands.
+- `--help` and `--version` flags on `git-push` and `git-tag`. Both flags short-circuit before any git or argument validation, so they work outside a git repository and regardless of other arguments.
+- `print_version [subcommand]` helper in `lib/ui.sh` provides a unified version-output format (`gitbetter[ <subcommand>] v<VERSION>` + homepage) used by all three commands.
+- `tests/gitbetter.bats` — 4 new BATS tests covering help, version, no-args, and unknown-flag handling.
+- `tests/git-push.bats` and `tests/git-tag.bats` — each gains 3 new tests covering `--help`, `--version`, and `--help` outside a git repo.
+
+### Changed
+
+- CI (`.github/workflows/ci.yml`) now lints `gitbetter.sh` alongside the existing scripts.
+- `tests/test_helper/common-setup.bash` exposes a `GITBETTER_SH` path variable to tests.
+
 ## [1.0.1] — 2025-04-17
 
 Refactor-only release. Behavior-preserving extraction of shared UI helpers.

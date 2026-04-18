@@ -13,6 +13,33 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=lib/ui.sh
 source "${SCRIPT_DIR}/lib/ui.sh"
 
+print_help() {
+    cat <<EOF
+git-tag — validate a semver tag, create it, and push to origin
+
+Usage:
+  git-tag vX.Y.Z [branch_name]
+  git-tag --help
+  git-tag --version
+
+Options:
+  --help        Show this help and exit
+  --version     Show version and exit
+
+Examples:
+  git-tag v1.0.0
+  git-tag v1.2.3 main
+
+Homepage: ${GITBETTER_HOMEPAGE}
+EOF
+}
+
+# ── Meta Flags (handled before any git work) ─────────────────
+case "${1:-}" in
+    --help)    print_help;                exit 0 ;;
+    --version) print_version "git-tag";   exit 0 ;;
+esac
+
 # ── Parse Arguments ──────────────────────────────────────────
 TAG="${1:-}"
 BRANCH_NAME="${2:-}"

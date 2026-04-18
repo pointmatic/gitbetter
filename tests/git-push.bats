@@ -23,6 +23,33 @@ teardown() {
     [[ "${output}" == *"git-push"* ]]
 }
 
+# ── Meta flags ──────────────────────────────────────────────
+
+@test "git-push: --help prints full help and exits 0" {
+    run "${GIT_PUSH_SH}" --help
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Usage:"* ]]
+    [[ "${output}" == *"Examples:"* ]]
+    [[ "${output}" == *"--amend"* ]]
+    [[ "${output}" == *"Homepage:"* ]]
+}
+
+@test "git-push: --version prints version and homepage, exits 0" {
+    run "${GIT_PUSH_SH}" --version
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"gitbetter git-push v1.1.0"* ]]
+    [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
+}
+
+@test "git-push: --help works outside a git repo" {
+    TMP_OUTSIDE="$(mktemp -d)"
+    cd "${TMP_OUTSIDE}"
+    run "${GIT_PUSH_SH}" --help
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Usage:"* ]]
+    rm -rf "${TMP_OUTSIDE}"
+}
+
 # ── Commit message sanitization ─────────────────────────────
 
 @test "git-push: commit message — backticks stripped" {

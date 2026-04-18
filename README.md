@@ -12,6 +12,21 @@ brew install pointmatic/tap/gitbetter
 
 ## Commands
 
+Quick overview:
+
+```bash
+gitbetter            # list all commands
+gitbetter --help     # same as above
+gitbetter --version  # print version and homepage
+```
+
+Every command supports `--help` and `--version`:
+
+```bash
+git-push --help
+git-tag --version
+```
+
 ### git-push
 
 Stage, commit, push, and optionally clean up a branch — all in one command.

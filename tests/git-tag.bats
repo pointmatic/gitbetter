@@ -24,6 +24,32 @@ teardown() {
     [[ "${output}" == *"git-tag"* ]]
 }
 
+# ── Meta flags ──────────────────────────────────────────────
+
+@test "git-tag: --help prints full help and exits 0" {
+    run "${GIT_TAG_SH}" --help
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Usage:"* ]]
+    [[ "${output}" == *"Examples:"* ]]
+    [[ "${output}" == *"Homepage:"* ]]
+}
+
+@test "git-tag: --version prints version and homepage, exits 0" {
+    run "${GIT_TAG_SH}" --version
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"gitbetter git-tag v1.1.0"* ]]
+    [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
+}
+
+@test "git-tag: --help works outside a git repo" {
+    TMP_OUTSIDE="$(mktemp -d)"
+    cd "${TMP_OUTSIDE}"
+    run "${GIT_TAG_SH}" --help
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Usage:"* ]]
+    rm -rf "${TMP_OUTSIDE}"
+}
+
 # ── Valid semver tags ───────────────────────────────────────
 
 @test "git-tag: valid semver v0.0.1 accepted (proceeds past validation)" {

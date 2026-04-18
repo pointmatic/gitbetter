@@ -19,7 +19,7 @@
 # ──────────────────────────────────────────────────────────────
 
 # ── Project Constants ────────────────────────────────────────
-GITBETTER_VERSION="1.0.1"
+GITBETTER_VERSION="1.1.0"
 GITBETTER_HOMEPAGE="https://github.com/pointmatic/gitbetter"
 
 # ── Colors & Symbols ─────────────────────────────────────────
@@ -82,4 +82,18 @@ footer_box() {
     echo -e "  ${BOLD}${G}╭─────────────────────────────────────────╮${RESET}"
     echo -e "  ${BOLD}${G}│${RESET}  ${CHECK} ${BOLD}All done.${RESET}                            ${BOLD}${G}│${RESET}"
     echo -e "  ${BOLD}${G}╰─────────────────────────────────────────╯${RESET}"
+}
+
+# ── Version printer ──────────────────────────────────────────
+# Usage:
+#   print_version               → "gitbetter v<VERSION>" + homepage
+#   print_version "git-push"    → "gitbetter git-push v<VERSION>" + homepage
+print_version() {
+    local subcommand="${1:-}"
+    if [[ -n "${subcommand}" ]]; then
+        echo "gitbetter ${subcommand} v${GITBETTER_VERSION}"
+    else
+        echo "gitbetter v${GITBETTER_VERSION}"
+    fi
+    echo "${GITBETTER_HOMEPAGE}"
 }

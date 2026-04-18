@@ -13,7 +13,8 @@ _common_setup() {
     REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
     GIT_TAG_SH="${REPO_ROOT}/git-tag.sh"
     GIT_PUSH_SH="${REPO_ROOT}/git-push.sh"
-    export REPO_ROOT GIT_TAG_SH GIT_PUSH_SH
+    GITBETTER_SH="${REPO_ROOT}/gitbetter.sh"
+    export REPO_ROOT GIT_TAG_SH GIT_PUSH_SH GITBETTER_SH
 }
 
 # Create an isolated temp working repo and cd into it.

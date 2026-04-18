@@ -14,6 +14,35 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=lib/ui.sh
 source "${SCRIPT_DIR}/lib/ui.sh"
 
+print_help() {
+    cat <<EOF
+git-push — streamlined commit & push for direct-to-main and branch-PR workflows
+
+Usage:
+  git-push [--amend] "commit message" [branch_name]
+  git-push --help
+  git-push --version
+
+Options:
+  --amend       Replace the last commit with the new message; force-pushes safely with --force-with-lease
+  --help        Show this help and exit
+  --version     Show version and exit
+
+Examples:
+  git-push "fix: typo"
+  git-push "feat: new thing" feature-xyz
+  git-push --amend "updated message"
+
+Homepage: ${GITBETTER_HOMEPAGE}
+EOF
+}
+
+# ── Meta Flags (handled before any git work) ─────────────────
+case "${1:-}" in
+    --help)    print_help;                 exit 0 ;;
+    --version) print_version "git-push";   exit 0 ;;
+esac
+
 # ── Validate Environment ────────────────────────────────────
 git rev-parse --is-inside-work-tree &>/dev/null \
     || fail "Not inside a git repository."
