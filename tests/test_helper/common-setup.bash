@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2025 Pointmatic
+# Copyright (c) 2026 Pointmatic
 # SPDX-License-Identifier: Apache-2.0
 #
 # Shared BATS setup/teardown helpers for gitbetter tests.
@@ -48,4 +48,49 @@ teardown_temp_repo() {
     if [[ -n "${TMP_ROOT:-}" && -d "${TMP_ROOT}" ]]; then
         rm -rf "${TMP_ROOT}"
     fi
+}
+
+# Make the bare remote one commit ahead of the current local branch by
+# cloning, committing, and pushing from a sibling working copy. The
+# current working directory (main test repo) is unchanged.
+#
+# Requires: setup_bare_remote to have been called and at least one
+# commit pushed to origin already (so the clone is non-empty).
+make_remote_ahead() {
+    local extra="${TMP_ROOT}/extra_ahead"
+    local here
+    here="$(pwd)"
+    git clone -q "${BARE_REMOTE}" "${extra}"
+    (
+        cd "${extra}"
+        git config user.email "test@gitbetter.local"
+        git config user.name "Test User"
+        git config commit.gpgsign false
+        echo "remote-only" > remote-only.txt
+        git add -A
+        git commit -q -m "commit only on remote"
+        git push -q origin HEAD
+    )
+    cd "${here}"
+}
+
+# Push an arbitrary tag to the bare remote from a sibling clone without
+# creating the tag locally in the main test repo.
+#
+# Requires: setup_bare_remote and at least one commit pushed to origin.
+tag_on_remote() {
+    local tag="$1"
+    local extra="${TMP_ROOT}/extra_tag_${tag}"
+    local here
+    here="$(pwd)"
+    git clone -q "${BARE_REMOTE}" "${extra}"
+    (
+        cd "${extra}"
+        git config user.email "test@gitbetter.local"
+        git config user.name "Test User"
+        git config commit.gpgsign false
+        git tag "${tag}"
+        git push -q origin "${tag}"
+    )
+    cd "${here}"
 }

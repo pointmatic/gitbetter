@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2025 Pointmatic
+# Copyright (c) 2026 Pointmatic
 # SPDX-License-Identifier: Apache-2.0
 # ──────────────────────────────────────────────────────────────
 #  git-tag — validate a semver tag, create it, and push to origin
@@ -64,6 +64,17 @@ git rev-parse --is-inside-work-tree &>/dev/null \
 # ── Duplicate Tag Check ─────────────────────────────────────
 if [[ -n "$(git tag -l "${TAG}")" ]]; then
     fail "Tag ${BOLD}${TAG}${RESET}${R} already exists locally."
+fi
+
+# ── Remote Tag Check ─────────────────────────────────────────
+# Read-only probe: `ls-remote` queries the remote without mutating
+# any local refs (unlike `fetch --tags`, which would create local
+# copies of every remote tag). If origin is unreachable, ls-remote
+# fails silently and we proceed — offline is not fatal here.
+if git remote get-url origin &>/dev/null; then
+    if git ls-remote --tags origin "refs/tags/${TAG}" 2>/dev/null | grep -q .; then
+        fail "Tag ${BOLD}${TAG}${RESET}${R} already exists on remote ${BOLD}origin${RESET}${R}. Refusing to overwrite."
+    fi
 fi
 
 # ── Find Latest Tag (numeric sort) ──────────────────────────

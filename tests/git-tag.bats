@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Copyright (c) 2025 Pointmatic
+# Copyright (c) 2026 Pointmatic
 # SPDX-License-Identifier: Apache-2.0
 
 load 'test_helper/common-setup'
@@ -37,7 +37,7 @@ teardown() {
 @test "git-tag: --version prints version and homepage, exits 0" {
     run "${GIT_TAG_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-tag v1.1.0"* ]]
+    [[ "${output}" == *"gitbetter git-tag v1.2.0"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 
@@ -48,6 +48,27 @@ teardown() {
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"Usage:"* ]]
     rm -rf "${TMP_OUTSIDE}"
+}
+
+# ── Remote-awareness (D.e) ──────────────────────────────────
+
+@test "git-tag: remote-existing tag is rejected before any prompt" {
+    git push -q -u origin main
+    tag_on_remote v9.9.9
+    run "${GIT_TAG_SH}" v9.9.9
+    [ "${status}" -eq 1 ]
+    [[ "${output}" == *"already exists on remote"* ]]
+    # Tag must not be created locally either
+    run git tag -l v9.9.9
+    [ -z "${output}" ]
+}
+
+@test "git-tag: remote reachable, tag novel → existing behavior (proceeds to prompt)" {
+    git push -q -u origin main
+    run bash -c "echo n | '${GIT_TAG_SH}' v0.0.1"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Aborted."* ]]
+    [[ "${output}" != *"already exists on remote"* ]]
 }
 
 # ── Valid semver tags ───────────────────────────────────────

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] — 2025-04-17
+
+Remote-awareness release. Both commands now perform cheap, read-only checks against `origin` before mutating anything locally, catching the two most common footguns: pushing on top of a diverged history, and creating a tag that already exists on the remote. **No automatic pulling, merging, or rebasing** — only fetching (for `git-push`) and `ls-remote` probing (for `git-tag`).
+
+### Added
+
+- `fetch_quiet_or_warn` helper in `lib/ui.sh` — wraps `git fetch --quiet` with a warn-on-failure pattern so callers can gracefully degrade when offline.
+- `git-push`: after branch switch and before staging, runs `git fetch` and compares `HEAD` against `@{u}`. If the remote has new commits you don't have locally, prints a warning with the exact count and upstream name, suggests `git pull --rebase`, and prompts before proceeding (default: no). Amend mode gets a stronger, amend-specific warning because `--force-with-lease` + unseen remote commits is almost never intentional.
+- `git-push`: when on an up-to-date or ahead branch, shows a brief "Up to date with <upstream>." or "N commit(s) ahead of <upstream> — ready to push." line for context.
+- `git-tag`: before creating the tag, probes `origin` via `git ls-remote --tags` (read-only — no local refs created) and **hard-fails** if the tag already exists on the remote. No force-path is offered; this is a safety rail against accidental tag reuse.
+- `tests/test_helper/common-setup.bash`: new helpers `make_remote_ahead` and `tag_on_remote` for constructing these scenarios in temp repos.
+- Six new BATS tests covering: no-upstream skip, remote-ahead warn+abort, amend + remote-ahead stronger warning, up-to-date info line, remote-existing tag rejected, remote reachable + novel tag proceeds.
+
+### Design notes
+
+- **No timeout on fetch.** `timeout(1)` isn't portable (BSD/macOS doesn't ship it), and `git fetch` will surface its own errors quickly in normal cases. If a remote hangs, Ctrl-C is the user's escape hatch. A pluggable timeout is a future consideration.
+- **`ls-remote` instead of `fetch --tags`** for the tag-existence check. `fetch --tags` would create local refs for every remote tag as a side effect, polluting the local tag namespace. `ls-remote` is a pure query.
+- **No auto-pull.** Pulling is a mutation that can fail mid-script (conflicts, auth prompts, surprising merge commits), conflicts with `--amend` semantics, and defeats `--force-with-lease`. Users pull themselves when they're ready.
+
 ## [1.1.0] — 2025-04-17
 
 ### Added

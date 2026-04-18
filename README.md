@@ -39,6 +39,8 @@ git-push --amend "updated message"       # amend last commit, force-push safely
 
 Every step is previewed and confirmed before execution. Pre-commit hook changes are detected and can be folded back in automatically.
 
+Before staging, `git-push` does a read-only `git fetch` against the upstream and warns if the remote has new commits you haven't seen. It never auto-pulls — you decide whether to rebase or push anyway.
+
 ### git-tag
 
 Validate a semver tag, show the latest tag for context, and push to origin.
@@ -48,7 +50,7 @@ git-tag v1.0.0              # validate, create, and push tag
 git-tag v1.0.0 main         # push tag to specific branch
 ```
 
-Tags are validated against `vX.Y.Z` format. The most recent tag is displayed (sorted numerically, not lexicographically) so you always know where you are.
+Tags are validated against `vX.Y.Z` format. The most recent tag is displayed (sorted numerically, not lexicographically) so you always know where you are. Before creating the tag, `git-tag` probes `origin` and refuses to proceed if the tag already exists remotely — no silent overwrites.
 
 ## Requirements
 
@@ -66,4 +68,4 @@ Pushing a tag matching `v*` triggers `.github/workflows/homebrew.yml`, which upd
 
 ## License
 
-[Apache-2.0](LICENSE) — Copyright (c) 2025 Pointmatic
+[Apache-2.0](LICENSE) — Copyright (c) 2026 Pointmatic

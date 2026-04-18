@@ -23,18 +23,18 @@ identifier. Use the comment syntax for the file type:
 
 **This project's header:**
 
-- **Copyright**: `Copyright (c) 2025 Pointmatic`
+- **Copyright**: `Copyright (c) 2026 Pointmatic`
 - **SPDX identifier**: `SPDX-License-Identifier: Apache-2.0`
 
 Shell example:
 ```bash
-# Copyright (c) 2025 Pointmatic
+# Copyright (c) 2026 Pointmatic
 # SPDX-License-Identifier: Apache-2.0
 ```
 
 YAML example:
 ```yaml
-# Copyright (c) 2025 Pointmatic
+# Copyright (c) 2026 Pointmatic
 # SPDX-License-Identifier: Apache-2.0
 ```
 

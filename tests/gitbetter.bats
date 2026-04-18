@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Copyright (c) 2025 Pointmatic
+# Copyright (c) 2026 Pointmatic
 # SPDX-License-Identifier: Apache-2.0
 
 load 'test_helper/common-setup'
@@ -43,7 +43,7 @@ teardown() {
 @test "gitbetter: --version prints version and homepage, exits 0" {
     run "${GITBETTER_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter v1.1.0"* ]]
+    [[ "${output}" == *"gitbetter v1.2.0"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 

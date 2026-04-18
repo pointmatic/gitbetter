@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Pointmatic
+# Copyright (c) 2026 Pointmatic
 # SPDX-License-Identifier: Apache-2.0
 # shellcheck shell=bash
 # Variables below are part of this library's public API — they
@@ -19,7 +19,7 @@
 # ──────────────────────────────────────────────────────────────
 
 # ── Project Constants ────────────────────────────────────────
-GITBETTER_VERSION="1.1.0"
+GITBETTER_VERSION="1.2.0"
 GITBETTER_HOMEPAGE="https://github.com/pointmatic/gitbetter"
 
 # ── Colors & Symbols ─────────────────────────────────────────
@@ -82,6 +82,22 @@ footer_box() {
     echo -e "  ${BOLD}${G}╭─────────────────────────────────────────╮${RESET}"
     echo -e "  ${BOLD}${G}│${RESET}  ${CHECK} ${BOLD}All done.${RESET}                            ${BOLD}${G}│${RESET}"
     echo -e "  ${BOLD}${G}╰─────────────────────────────────────────╯${RESET}"
+}
+
+# ── Remote helpers ───────────────────────────────────────────
+# Attempt a read-only `git fetch`. On failure (offline, auth,
+# unreachable remote) warn and return non-zero so the caller can
+# skip any divergence / staleness checks gracefully.
+#
+# Usage:
+#   fetch_quiet_or_warn              # default fetch
+#   fetch_quiet_or_warn --tags       # forward any args to git fetch
+fetch_quiet_or_warn() {
+    if git fetch --quiet "$@" 2>/dev/null; then
+        return 0
+    fi
+    warn "Could not reach remote (offline?). Skipping divergence check."
+    return 1
 }
 
 # ── Version printer ──────────────────────────────────────────

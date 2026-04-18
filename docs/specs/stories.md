@@ -14,7 +14,7 @@ For a high-level concept (why), see `concept.md`. For requirements and behavior 
 
 Set up the repository skeleton: license, copyright headers, package manifest, README, and .gitignore.
 
-- [x] Create `LICENSE` file (Apache-2.0, Copyright (c) 2025 Pointmatic)
+- [x] Create `LICENSE` file (Apache-2.0, Copyright (c) 2026 Pointmatic)
 - [x] Add copyright and SPDX header to `git-push.sh`
 - [x] Create `README.md` with project overview, install instructions (`brew install pointmatic/tap/gitbetter`), usage examples for `git-push` and `git-tag`, and license section
 - [x] Create `CHANGELOG.md` with initial `## [Unreleased]` section
@@ -208,16 +208,72 @@ Add a new `gitbetter` umbrella command plus `--help` and `--version` flags on al
 - [x] Verify: `./gitbetter.sh`, `./gitbetter.sh --help`, `./gitbetter.sh --version`, `./git-push.sh --help`, `./git-push.sh --version`, `./git-tag.sh --help`, `./git-tag.sh --version` all print expected output and exit 0; `--help` works outside a git repo (covered by BATS); `shellcheck` clean; `bats tests/` passes (31/31)
 - [ ] **Before tagging v1.1.0**: update `pointmatic/homebrew-tap/Formula/gitbetter.rb` to also install `gitbetter.sh` and write a `bin/gitbetter` wrapper; add a `test do` block asserting `--version` on all three commands. See `tech-spec.md` Homebrew Formula section for the full template.
 
+### Story D.e: v1.2.0 Remote-awareness — fetch and warn before push/tag [Done]
+
+Add cheap, read-only remote-awareness to `git-push` and `git-tag` so users don't unknowingly push on top of diverged history or create tags that already exist on the remote. Deliberately **does not** `git pull` — pulling is a mutation that can fail mid-script, surprise the user, conflict with `--amend`, and defeat the `--force-with-lease` safety net. Instead, `fetch` silently, detect divergence, and prompt or fail with clear guidance.
+
+**Design principles:**
+- Never mutate working tree or index automatically — only `git fetch`, which is read-only.
+- Never silently merge or rebase — if action is needed, the user performs it after exiting.
+- Respect existing prompt conventions: `confirm()` for abort-gates, `ask_yn()` for optional continue-prompts.
+- Skip divergence checks gracefully when no upstream is configured (new branch) or when offline (fetch failure should warn, not abort).
+
+**`git-push.sh`:**
+
+- [x] After branch-switch step and before staging, run `git fetch --quiet` via `fetch_quiet_or_warn`; on failure the helper warns "Could not reach remote (offline?). Skipping divergence check." and the caller continues.
+- [x] Detect upstream via `git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null`. If empty, skip the divergence check entirely.
+- [x] Compute ahead/behind via `git rev-list --left-right --count 'HEAD...@{u}'` and parse into `AHEAD` / `BEHIND`.
+- [x] If `BEHIND > 0` **and not** `--amend` mode: `warn` + `info "Consider: git pull --rebase  (then re-run git-push)"` + `ask_yn "Push anyway?"` (default no → exit 0 cleanly with `Aborted.`).
+- [x] If `BEHIND > 0` **and** `--amend` mode: stronger multi-line warning explaining why `--force-with-lease` + unseen remote commits is almost certainly unintended; then the same `ask_yn "Push anyway?"` default-no abort. (Flipped from `confirm` to `ask_yn` for safety, as the story suggested.)
+- [x] If `BEHIND == 0`: emit a single `info` line — either "Up to date with <upstream>." or "N commit(s) ahead of <upstream> — ready to push."
+- [x] No change to the existing `--force-with-lease` push flow.
+
+**`git-tag.sh`:**
+
+- [x] After the local duplicate-tag check, probe `origin` via `git ls-remote --tags origin "refs/tags/${TAG}"` (read-only) and `fail` hard if the tag already exists on the remote. **Important change from the original plan:** we deliberately do NOT use `git fetch --tags` here because `fetch --tags` creates local refs for every remote tag as a side effect, polluting the local tag namespace. `ls-remote` is a pure query with no local mutation.
+- [x] If origin is unreachable, `ls-remote` silently fails (stderr suppressed) and we proceed — offline is not fatal for the tag flow.
+- [ ] Optional behind-warning — **deferred**. Low-value in practice (most repos tag on main after PRs have merged; the interesting signal is the remote tag collision, which is covered). Can be revisited if feedback calls for it.
+
+**`lib/ui.sh`:**
+
+- [x] Extracted `fetch_quiet_or_warn()` in `lib/ui.sh`. Drops the `timeout 10` wrapper for portability (BSD `timeout` isn't ubiquitous on macOS; `git fetch` surfaces its own errors quickly for normal failures). Used by `git-push.sh`; `git-tag.sh` intentionally uses `ls-remote` directly instead (see above).
+
+**Tests (`tests/git-push.bats`, `tests/git-tag.bats`):**
+
+- [x] `git-push`: remote-ahead + answer no → exits 0 with `Aborted.` message. (Note: bash's `read -rp` prompt text is only shown to a TTY, not to a piped stdin, so assertions match the warning + abort text rather than the literal `Push anyway?` string.)
+- [x] `git-push --amend`: remote-ahead triggers the `Amend + remote-ahead` warning.
+- [x] `git-push`: no upstream → no `Remote Check` banner appears (existing tests already hit this path; new test asserts it explicitly).
+- [x] `git-push`: up-to-date → `Remote Check` banner appears with `Up to date with` or `ready to push`, no divergence prompt.
+- [ ] `git-push`: explicit remote-ahead + answer yes → push proceeds. **Deferred** — would require either a second bare remote to push into (to avoid actually pushing the diverged history) or additional scaffolding; the abort path exercises the exact same code path that matters for the safety check.
+- [ ] `git-push`: fetch-failure simulation (unreachable remote URL) → warn + continue. **Deferred** — simulating a reachable-but-broken origin in BATS is flakey. The code path is exercised by manual smoke testing and is a simple one-branch fall-through.
+- [x] `git-tag`: tag exists on remote → exit 1 with clear error; tag NOT created locally (asserted).
+- [x] `git-tag`: reachable origin + novel tag → behavior unchanged (proceeds to confirm prompt).
+
+**Docs:**
+
+- [x] Updated `README.md` — one-line fetch-and-warn note under `git-push`, one-line remote-probe note under `git-tag`.
+- [ ] `docs/specs/features.md`: acceptance criteria for remote-awareness. **Deferred to Story E.a (Docs polish)** — keeping all features.md edits in one doc-polish pass.
+- [ ] `docs/specs/tech-spec.md`: formal writeup of the fetch-and-warn flow. **Deferred to Story E.a** for the same reason. Design rationale is captured in the CHANGELOG v1.2.0 "Design notes" subsection in the meantime.
+- [x] Updated `CHANGELOG.md` under v1.2.0 with full Added + Design-notes sections.
+
+**Verify:**
+
+- [x] `shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh scripts/spike-tag.sh` clean.
+- [x] `bats tests/` passes, 37/37 (was 31; +6 new D.e tests).
+- [x] Manual smoke: behind-by-one (warning + abort verified via BATS + manual reproduction), remote-existing-tag (manually reproduced in `/tmp` before BATS fix), `--version` on all three commands prints `v1.2.0`.
+- [ ] **Before tagging v1.2.0**: tap formula only needs the new `url` / `sha256` bump (no structural change this release). The Homebrew bump action handles this automatically on tag push.
+
 ## Phase E: Documentation & Release
 
 ### Story E.a: Final README and Docs Polish [Planned]
 
-Finalize all documentation for the v1.1.0 release.
+Finalize all documentation for the v1.2.1 release.
 
 - [ ] Review and finalize README.md: project description, install, usage examples for all three commands (`gitbetter`, `git-push`, `git-tag`), `--help` / `--version` mentions, contributing section, license
 - [ ] Review CHANGELOG.md: ensure all versions are documented
 - [ ] Remove `scripts/spike-tag.sh` (throwaway from A.c)
 - [ ] Verify: README renders correctly on GitHub, all links work
+- [ ] Bump version to v1.2.1 in source
 
 ---
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2025 Pointmatic
+# Copyright (c) 2026 Pointmatic
 # SPDX-License-Identifier: Apache-2.0
 # ──────────────────────────────────────────────────────────────
 #  spike-tag.sh — throwaway end-to-end test for git-tag.sh

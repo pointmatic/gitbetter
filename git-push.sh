@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2025 Pointmatic
+# Copyright (c) 2026 Pointmatic
 # SPDX-License-Identifier: Apache-2.0
 # ──────────────────────────────────────────────────────────────
 #  git-push — streamlined commit & push for direct-to-main
@@ -122,6 +122,43 @@ else
         info "Already on ${M}${BRANCH_NAME}${RESET} — no switch needed."
     fi
     CURRENT_BRANCH="$(git symbolic-ref --short HEAD)"
+fi
+
+# ── Step 2.5 · Remote Divergence Check ──────────────────────
+# Read-only fetch + ahead/behind detection. Never auto-pulls.
+UPSTREAM="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
+if [[ -n "${UPSTREAM}" ]]; then
+    banner "Remote Check"
+    # shellcheck disable=SC2119  # intentional no-args call
+    if fetch_quiet_or_warn; then
+        # rev-list --count outputs "<ahead>\t<behind>"
+        COUNTS="$(git rev-list --left-right --count 'HEAD...@{u}' 2>/dev/null || echo "0	0")"
+        AHEAD="$(echo "${COUNTS}" | cut -f1)"
+        BEHIND="$(echo "${COUNTS}" | cut -f2)"
+        if [[ "${BEHIND}" -gt 0 ]]; then
+            echo ""
+            if ${AMEND}; then
+                warn "Amend + remote-ahead: ${M}${UPSTREAM}${RESET} has ${Y}${BEHIND}${RESET} new commit(s) you don't have locally."
+                info "${DIM}--force-with-lease${RESET} will overwrite based on your local view, but you"
+                info "haven't seen the remote's new commits. This is ${Y}almost certainly not${RESET}"
+                info "what you want."
+                info "Consider: ${DIM}git pull --rebase${RESET}  (then re-run git-push --amend)"
+            else
+                warn "Remote ${M}${UPSTREAM}${RESET} has ${Y}${BEHIND}${RESET} new commit(s) you don't have locally."
+                info "Consider: ${DIM}git pull --rebase${RESET}  (then re-run git-push)"
+            fi
+            if ! ask_yn "Push anyway?"; then
+                echo -e "\n  ${DIM}Aborted.${RESET}\n"
+                exit 0
+            fi
+        else
+            if [[ "${AHEAD}" -gt 0 ]]; then
+                info "${AHEAD} commit(s) ahead of ${M}${UPSTREAM}${RESET} — ready to push."
+            else
+                info "Up to date with ${M}${UPSTREAM}${RESET}."
+            fi
+        fi
+    fi
 fi
 
 # ── Step 3 · Review Working Tree ────────────────────────────

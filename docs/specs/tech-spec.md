@@ -382,7 +382,7 @@ ShellCheck and BATS run on every push and pull request via `.github/workflows/ci
         #!/usr/bin/env bash
         exec "#{libexec}/git-tag.sh" "$@"
       SH
-      chmod 0555, bin/"gitbetter", bin/"git-push", bin/"git-tag"
+      chmod 0555, [bin/"gitbetter", bin/"git-push", bin/"git-tag"]
     end
 
     test do
