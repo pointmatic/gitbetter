@@ -35,11 +35,14 @@ Stage, commit, push, and optionally clean up a branch — all in one command.
 git-push "commit message"                # stage, commit, push to current branch
 git-push "commit message" feature-xyz    # switch to branch, push, offer PR cleanup
 git-push --amend "updated message"       # amend last commit, force-push safely
+git-push "wip" feature-xyz --keep        # push without prompting for branch cleanup
 ```
 
 Every step is previewed and confirmed before execution. Pre-commit hook changes are detected and can be folded back in automatically.
 
 Before staging, `git-push` does a read-only `git fetch` against the upstream and warns if the remote has new commits you haven't seen. It never auto-pulls — you decide whether to rebase or push anyway.
+
+After pushing from a non-`main` branch, `git-push` shows the Actions and Compare URLs and asks a single question: *"Merge complete? Clean up (switch to main, pull, delete branch)?"*. The default is **no** (keep the branch). Pass `--keep` (or `-k`) to skip the prompt entirely — handy for multi-commit feature branches.
 
 ### git-tag
 

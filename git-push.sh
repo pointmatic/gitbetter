@@ -5,7 +5,7 @@
 #  git-push — streamlined commit & push for direct-to-main
 #             and branch-PR workflows
 #
-#  Usage:  git-push [--amend] "commit message" [branch_name]
+#  Usage:  git-push [--amend] [--keep|-k] "commit message" [branch_name]
 # ──────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -19,12 +19,14 @@ print_help() {
 git-push — streamlined commit & push for direct-to-main and branch-PR workflows
 
 Usage:
-  git-push [--amend] "commit message" [branch_name]
+  git-push [--amend] [--keep|-k] "commit message" [branch_name]
   git-push --help
   git-push --version
 
 Options:
   --amend       Replace the last commit with the new message; force-pushes safely with --force-with-lease
+  --keep, -k    Skip the post-push cleanup prompt and leave the branch intact
+                (for multi-commit feature branches)
   --help        Show this help and exit
   --version     Show version and exit
 
@@ -32,6 +34,7 @@ Examples:
   git-push "fix: typo"
   git-push "feat: new thing" feature-xyz
   git-push --amend "updated message"
+  git-push "wip" feature-xyz --keep
 
 Homepage: ${GITBETTER_HOMEPAGE}
 EOF
@@ -49,17 +52,19 @@ git rev-parse --is-inside-work-tree &>/dev/null \
 
 # ── Parse Arguments ──────────────────────────────────────────
 AMEND=false
+KEEP=false
 POSITIONAL=()
 
 for arg in "$@"; do
     case "${arg}" in
-        --amend) AMEND=true ;;
-        *)       POSITIONAL+=("${arg}") ;;
+        --amend)    AMEND=true ;;
+        --keep|-k)  KEEP=true ;;
+        *)          POSITIONAL+=("${arg}") ;;
     esac
 done
 
 [[ ${#POSITIONAL[@]} -lt 1 ]] && {
-    echo -e "\n  ${BOLD}Usage:${RESET}  git-push ${DIM}[--amend]${RESET} ${C}\"commit message\"${RESET} ${DIM}[branch_name]${RESET}\n"
+    echo -e "\n  ${BOLD}Usage:${RESET}  git-push ${DIM}[--amend] [--keep|-k]${RESET} ${C}\"commit message\"${RESET} ${DIM}[branch_name]${RESET}\n"
     exit 1
 }
 
@@ -241,46 +246,43 @@ else
     fi
 fi
 
-# ── Step 7 · Branch PR Workflow (cleanup) ────────────────────
+# ── Step 7 · Branch Workflow ─────────────────────────────────
+# Only applies on non-main branches. Single ask_yn (default no = keep)
+# replaces the old two-step wait-for-CI → delete-branch prompts.
 if [[ "${CURRENT_BRANCH}" != "main" ]]; then
     divider
-    echo ""
-    info "${BOLD}Branch PR Workflow${RESET}"
-    info "You're on ${M}${CURRENT_BRANCH}${RESET}, not ${M}main${RESET}."
-    info "Next steps: open a PR on GitHub, wait for CI, merge."
+    banner "Branch Workflow"
 
-    # Try to build the Actions URL
+    # Parse GitHub remote once; reuse for Actions + Compare URLs.
     REMOTE_URL="$(git remote get-url origin 2>/dev/null || true)"
     ACTIONS_URL=""
+    COMPARE_URL=""
     if [[ "${REMOTE_URL}" =~ github\.com[:/](.+)(\.git)?$ ]]; then
         REPO_PATH="${BASH_REMATCH[1]}"
         REPO_PATH="${REPO_PATH%.git}"
         ACTIONS_URL="https://github.com/${REPO_PATH}/actions"
+        COMPARE_URL="https://github.com/${REPO_PATH}/compare/${CURRENT_BRANCH}"
     fi
 
-    if ask_yn "Wait for GitHub Actions / CI to pass?"; then
-        if [[ -n "${ACTIONS_URL}" ]]; then
-            info "Actions: ${DIM}${ACTIONS_URL}${RESET}"
-            # Attempt to open in browser (macOS / Linux)
-            if command -v open &>/dev/null; then
-                open "${ACTIONS_URL}" 2>/dev/null || true
-            elif command -v xdg-open &>/dev/null; then
-                xdg-open "${ACTIONS_URL}" 2>/dev/null || true
-            fi
-        fi
-        echo ""
-        echo -e "  ${DIM}Press Enter when ready to continue…${RESET}"
-        read -r
+    info "${BOLD}Branch:${RESET}   ${M}${CURRENT_BRANCH}${RESET}"
+    if [[ -n "${ACTIONS_URL}" ]]; then
+        info "${BOLD}Actions:${RESET}  ${DIM}${ACTIONS_URL}${RESET}"
+        info "${BOLD}Compare:${RESET}  ${DIM}${COMPARE_URL}${RESET}"
+    fi
+    echo ""
 
-        if ask_yn "Delete ${M}${CURRENT_BRANCH}${RESET} and pull latest main?"; then
-            banner "Cleanup"
-            run_cmd git switch main
-            run_cmd git fetch --prune
-            run_cmd git pull
-            run_cmd git branch -D "${CURRENT_BRANCH}"
-            echo ""
-            success "Branch ${M}${CURRENT_BRANCH}${RESET} deleted. You're on ${M}main${RESET} with latest."
-        fi
+    if ${KEEP}; then
+        info "Keeping ${M}${CURRENT_BRANCH}${RESET}. Next push will continue on it."
+    elif ask_yn "Merge complete? Clean up (switch to main, pull, delete branch)?"; then
+        banner "Cleanup"
+        run_cmd git switch main
+        run_cmd git fetch --prune
+        run_cmd git pull --ff-only
+        run_cmd git branch -D "${CURRENT_BRANCH}"
+        echo ""
+        success "Branch ${M}${CURRENT_BRANCH}${RESET} deleted. You're on ${M}main${RESET} with latest."
+    else
+        info "Keeping ${M}${CURRENT_BRANCH}${RESET}. Next push will continue on it."
     fi
 fi
 

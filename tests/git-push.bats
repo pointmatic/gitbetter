@@ -31,13 +31,15 @@ teardown() {
     [[ "${output}" == *"Usage:"* ]]
     [[ "${output}" == *"Examples:"* ]]
     [[ "${output}" == *"--amend"* ]]
+    [[ "${output}" == *"--keep"* ]]
+    [[ "${output}" == *"-k"* ]]
     [[ "${output}" == *"Homepage:"* ]]
 }
 
 @test "git-push: --version prints version and homepage, exits 0" {
     run "${GIT_PUSH_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-push v1.2.0"* ]]
+    [[ "${output}" == *"gitbetter git-push v1.3.0"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 
@@ -158,4 +160,62 @@ teardown() {
     [[ "${output}" == *"fix: patch"* ]]
     [[ "${output}" == *"bugfix"* ]]
     [[ "${output}" == *"amend"* ]]
+}
+
+# ── Branch Workflow (D.f) ───────────────────────────────────
+
+@test "git-push --keep: on non-main branch, no cleanup prompt; branch kept" {
+    # Full push flow on a feature branch with --keep.
+    # Inputs: y (last commit confirm), y (stage confirm), y (commit confirm)
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    echo "work" > work.txt
+    run bash -c "printf 'y\ny\ny\n' | '${GIT_PUSH_SH}' --keep 'wip' feat/x"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Branch Workflow"* ]]
+    [[ "${output}" == *"Keeping"* ]]
+    [[ "${output}" == *"Next push will continue"* ]]
+    [[ "${output}" != *"Merge complete?"* ]]
+    [[ "${output}" != *"Cleanup"* ]]
+    # Branch still exists, HEAD still on it
+    run git symbolic-ref --short HEAD
+    [ "${output}" = "feat/x" ]
+    run git branch --list feat/x
+    [[ "${output}" == *"feat/x"* ]]
+}
+
+@test "git-push: on non-main branch, answer N at cleanup prompt → branch kept" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    echo "work" > work.txt
+    # 4 prompts: last-commit (y), stage (y), commit (y), cleanup (N via Enter)
+    run bash -c "printf 'y\ny\ny\n\n' | '${GIT_PUSH_SH}' 'wip' feat/y"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Branch Workflow"* ]]
+    [[ "${output}" == *"Keeping"* ]]
+    [[ "${output}" != *"Cleanup"* ]]
+    run git symbolic-ref --short HEAD
+    [ "${output}" = "feat/y" ]
+    run git branch --list feat/y
+    [[ "${output}" == *"feat/y"* ]]
+}
+
+@test "git-push: on non-main branch, answer y at cleanup → switch main, delete branch" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    echo "work" > work.txt
+    # 4 prompts: last-commit (y), stage (y), commit (y), cleanup (y)
+    run bash -c "printf 'y\ny\ny\ny\n' | '${GIT_PUSH_SH}' 'wip' feat/z"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Cleanup"* ]]
+    [[ "${output}" == *"deleted"* ]]
+    # Back on main
+    run git symbolic-ref --short HEAD
+    [ "${output}" = "main" ]
+    # Branch gone
+    run git branch --list feat/z
+    [ -z "${output}" ]
 }

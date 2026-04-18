@@ -261,7 +261,67 @@ Add cheap, read-only remote-awareness to `git-push` and `git-tag` so users don't
 - [x] `shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh scripts/spike-tag.sh` clean.
 - [x] `bats tests/` passes, 37/37 (was 31; +6 new D.e tests).
 - [x] Manual smoke: behind-by-one (warning + abort verified via BATS + manual reproduction), remote-existing-tag (manually reproduced in `/tmp` before BATS fix), `--version` on all three commands prints `v1.2.0`.
-- [ ] **Before tagging v1.2.0**: tap formula only needs the new `url` / `sha256` bump (no structural change this release). The Homebrew bump action handles this automatically on tag push.
+- [x] **Before tagging v1.2.0**: tap formula only needs the new `url` / `sha256` bump (no structural change this release). The Homebrew bump action handles this automatically on tag push.
+
+### Story D.f: v1.3.0 Branch-workflow simplification — '--keep' flag + single cleanup prompt [Done]
+
+Rework the post-push branch cleanup flow in `git-push.sh` to match how people actually work on feature branches. The existing two-step `Wait for CI? → Delete branch?` prompts conflate "watch CI" with "clean up after merge" and block the terminal on a `read -r` with no underlying observation. Replace with a single explicit yes/no and add a `--keep` flag for users who already know another commit is coming.
+
+**Design principles:**
+- **Safe default**: Enter-spam must never destroy a branch. "Keep" is always the default.
+- **No terminal babysitting**: print Actions/PR links as info; never block on "press Enter to continue."
+- **Explicit opt-in to destruction**: deleting a branch requires a typed `y`.
+- **Consistent idiom**: use the existing `ask_yn` (default no), not a bespoke multi-choice menu.
+
+**`git-push.sh` — argument parsing:**
+
+- [x] Add `-k` / `--keep` flag parsing alongside the existing `--amend`. Flag is a pure boolean; default false.
+- [x] Update `print_help` to document `--keep` / `-k` under Options, with a one-line description: "Skip the post-push cleanup prompt and leave the branch intact (for multi-commit feature branches)."
+- [x] Update the Examples section of `print_help` to include: `git-push "wip" feature/foo --keep`.
+
+**`git-push.sh` — post-push flow (Step 7 rewrite):**
+
+- [x] Only runs when `CURRENT_BRANCH != main` (same guard as today).
+- [x] Build Actions URL (already implemented) and **also** build a Compare URL: `https://github.com/<org>/<repo>/compare/<branch>` — useful link when no PR exists yet.
+- [x] Print a `Branch Workflow` banner + a compact status block:
+  - `▸ Branch:   <branch>`
+  - `▸ Actions:  <url>` (only if GitHub remote detected)
+  - `▸ Compare:  <url>` (only if GitHub remote detected)
+- [x] **If `--keep` is set**: print `info "Keeping ${branch}. Next push will continue on it."` and exit the cleanup section. No prompts.
+- [x] **If `--keep` is NOT set**: single `ask_yn "Merge complete? Clean up (switch to main, pull, delete branch)?"` — default no.
+  - **y** → run cleanup sequence:
+    - `git switch main`
+    - `git fetch --prune`
+    - `git pull --ff-only` (fail cleanly if non-ff — the script shouldn't paper over unexpected history)
+    - `git branch -D <branch>`
+    - `success "Branch ${branch} deleted. You're on main with latest."`
+  - **N (default)** → print `info "Keeping ${branch}. Next push will continue on it."` and fall through.
+- [x] **Remove** the old "Wait for GitHub Actions / CI to pass?" prompt and the `read -r` Enter-pause. Auto-open of the Actions URL is also dropped; URLs are shown as info only.
+- [x] Verify: after the cleanup branch runs, the script continues to the existing "Latest Commit" banner so the final output is consistent.
+
+**Tests (`tests/git-push.bats`):**
+
+- [x] `git-push --keep "msg" <branch>`: on a non-main branch, after successful push, no cleanup prompt appears; output contains `Keeping` and `Next push will continue`.
+- [x] `git-push "msg" <branch>` (no `--keep`): on a non-main branch, cleanup prompt appears in the script flow; answering N (default via Enter) leaves the branch intact — verify branch still exists locally and current HEAD is still on the branch.
+- [x] `git-push "msg" <branch>` with answer y at the cleanup prompt: verify `git switch main`, `git branch -D <branch>`, and final branch is gone.
+- [x] `git-push --help`: output contains `--keep` and `-k`.
+
+**Docs:**
+
+- [x] Update `README.md` `git-push` section: add `git-push "msg" feature-xyz --keep` to the examples list; add a sentence about the simplified cleanup prompt.
+- [x] Update `CHANGELOG.md` under `[1.3.0]`: describe the flag, the prompt simplification, and the removed "Wait for CI" step. Include a brief rationale in a "Design notes" subsection consistent with the v1.2.0 entry.
+- [x] Bump `GITBETTER_VERSION` in `lib/ui.sh` to `1.3.0`.
+- [x] Update `tests/*.bats` version assertions from `v1.2.0` → `v1.3.0`.
+
+**Verify:**
+
+- [x] `shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh scripts/spike-tag.sh` clean.
+- [x] `bats tests/` passes (40 tests: 37 prior + 3 new D.f tests).
+- [ ] Manual smoke on a real repo:
+  - `git-push "msg" feat/x` on a new branch with main already tracked; answer N → branch kept, terminal returns cleanly.
+  - Same, answer y (after merging the PR on GitHub) → ends up on main with branch deleted.
+  - `git-push "msg" feat/x --keep` → no prompt, no cleanup; branch kept.
+  - `git-push "msg"` on main → no Branch Workflow section (unchanged).
 
 ## Phase E: Documentation & Release
 
@@ -291,3 +351,7 @@ The `archive_stories` mode preserves this section verbatim when archiving storie
 - Homebrew formula creation (initial formula in `pointmatic/homebrew-tap` repo)
 - Shell completion scripts (bash-completion, zsh)
 - `man` pages for each command
+
+**Out of scope (Story D.f: v1.3.0):**
+
+- **Auto-detect PR merge status via `gh pr view`**: when the GitHub CLI is available, call `gh pr view <branch> --json state -q .state`; if `MERGED`, default the cleanup prompt to **y**. Pure UX upgrade, doesn't change the flag or prompt shape. Added to Future section.

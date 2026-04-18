@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] — 2025-04-17
+
+Branch-workflow simplification. The post-push branch cleanup flow now uses a single explicit prompt and a new `--keep` / `-k` flag, replacing the older two-step "wait for CI, then delete branch" interaction.
+
+### Added
+
+- `git-push`: `--keep` / `-k` flag. When pushing from a non-`main` branch, suppresses the cleanup prompt entirely and leaves the branch intact. Intended for multi-commit feature branches where cleanup happens later, manually, after PR merge.
+- `git-push`: on non-`main` branches after a successful push, shows the branch name plus the GitHub **Actions** and **Compare** URLs (when the origin is a GitHub remote) so users can jump straight to CI or PR creation.
+- Three new BATS tests in `tests/git-push.bats` covering: `--keep` skips the cleanup prompt, answering N keeps the branch, answering y runs the full cleanup (switch to main, fetch --prune, pull --ff-only, delete branch).
+
+### Changed
+
+- `git-push`: replaced the old two-step prompt ("Wait for GitHub Actions / CI to pass?" → press Enter → "Delete branch and pull latest main?") with a single `ask_yn "Merge complete? Clean up (switch to main, pull, delete branch)?"`. Default is **no** (keep branch) — the safe choice when in doubt.
+- `git-push`: cleanup now uses `git pull --ff-only` instead of plain `git pull` to avoid surprising merge commits on `main` if upstream has diverged.
+- `git-push --help` lists the new `--keep` / `-k` flag and example.
+
+### Removed
+
+- "Press Enter when ready to continue…" blocking wait step. Browser-opening of the Actions URL is also gone; the URL is still printed for copy/paste.
+
+### Design notes
+
+- **Single prompt, default no.** The previous flow tried to shepherd users through "wait, then delete"; in practice the two steps happen at wildly different times (CI can take many minutes) and the "press Enter" pause is a poor proxy for "PR is merged." The new prompt asks the one question that actually matters — *"is the merge done?"* — and defaults to "no" so hitting Enter leaves the branch untouched.
+- **`--keep` shortcut.** Multi-commit feature branches shouldn't have to answer "no" every push. The short `-k` form keeps day-to-day pushes frictionless.
+- **Automated PR-merge detection deferred.** `gh pr view --json state` could answer the "is it merged?" question definitively, but adds a `gh` dependency and an auth path. Noted for a future enhancement.
+
 ## [1.2.0] — 2025-04-17
 
 Remote-awareness release. Both commands now perform cheap, read-only checks against `origin` before mutating anything locally, catching the two most common footguns: pushing on top of a diverged history, and creating a tag that already exists on the remote. **No automatic pulling, merging, or rebasing** — only fetching (for `git-push`) and `ls-remote` probing (for `git-tag`).
