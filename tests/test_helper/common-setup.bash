@@ -29,9 +29,17 @@ setup_temp_repo() {
 }
 
 # Create a bare remote and wire it up as origin.
+#
+# The bare is initialized with `-b main` so its HEAD symbolic ref
+# matches the local default branch. Without this, on hosts whose
+# `init.defaultBranch` is still `master` (e.g. stock Ubuntu CI),
+# sibling clones of this bare emit "remote HEAD refers to nonexistent
+# ref" and fail to check out a working tree — breaking any helper that
+# commits or tags from a clone. Falls back to plain `init --bare` on
+# git < 2.28 (which doesn't support `-b` on init).
 setup_bare_remote() {
     local bare="${TMP_ROOT}/remote.git"
-    git init --bare -q "${bare}"
+    git init --bare -q -b main "${bare}" 2>/dev/null || git init --bare -q "${bare}"
     git remote add origin "${bare}"
     export BARE_REMOTE="${bare}"
 }
