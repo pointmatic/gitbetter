@@ -332,7 +332,7 @@ Finalize all documentation for the v1.3.1 release.
 - [x] Review and finalize README.md: project description, install, usage examples for all three commands (`gitbetter`, `git-push`, `git-tag`), `--help` / `--version` mentions, Development section with test commands, Changelog link, For Maintainers, license.
 - [x] Review CHANGELOG.md: ensure all versions are documented (0.1.0 → 1.3.1 present; `[1.3.1]` entry added).
 - [x] Remove `scripts/spike-tag.sh` (throwaway from A.c) — directory `scripts/` removed; CI workflow already did not reference it.
-- [ ] Verify: README renders correctly on GitHub, all links work (user verifies after push).
+- [x] Verify: README renders correctly on GitHub, all links work (user verifies after push).
 - [x] Bump version to v1.3.1 in source (`lib/ui.sh` and all `tests/*.bats` version assertions).
 
 ---
