@@ -19,7 +19,7 @@
 # ──────────────────────────────────────────────────────────────
 
 # ── Project Constants ────────────────────────────────────────
-GITBETTER_VERSION="1.3.1"
+GITBETTER_VERSION="1.4.0"
 GITBETTER_HOMEPAGE="https://github.com/pointmatic/gitbetter"
 
 # ── Colors & Symbols ─────────────────────────────────────────
@@ -55,6 +55,51 @@ ask_yn() {
     read -rp $'  \033[0;33m'"${prompt}"$' [y/N]\033[0m ' answer
     answer="${answer:-n}"
     [[ "${answer}" =~ ^[Yy]$ ]]
+}
+
+# Prompt with a numbered N-option menu. Default index is selected on
+# Enter. Invalid input re-prompts once, then falls back to the default.
+# Sets REPLY to the 1-indexed selection.
+#
+# Usage:
+#   ask_choice "What now?" 3 \
+#       "Retry with --force-with-lease" \
+#       "Roll back commit" \
+#       "Abort"
+#   case "${REPLY}" in 1) ... ;; 2) ... ;; 3) ... ;; esac
+ask_choice() {
+    local prompt="$1"
+    local default="$2"
+    shift 2
+    local options=("$@")
+    local n="${#options[@]}"
+    local i
+    local answer
+
+    echo ""
+    echo -e "  ${BOLD}${Y}${prompt}${RESET}"
+    for ((i = 0; i < n; i++)); do
+        echo -e "    ${BOLD}$((i + 1)))${RESET} ${options[i]}"
+    done
+
+    local attempts=0
+    while (( attempts < 2 )); do
+        echo ""
+        read -rp $'  \033[0;33mChoice ['"${default}"$']:\033[0m ' answer
+        answer="${answer:-${default}}"
+        if [[ "${answer}" =~ ^[0-9]+$ ]] && (( answer >= 1 && answer <= n )); then
+            REPLY="${answer}"
+            return 0
+        fi
+        attempts=$((attempts + 1))
+        if (( attempts < 2 )); then
+            warn "Invalid choice. Enter a number 1–${n}."
+        fi
+    done
+
+    warn "Invalid input — using default (${default})."
+    REPLY="${default}"
+    return 0
 }
 
 divider() { echo -e "  ${DIM}─────────────────────────────────────────${RESET}"; }

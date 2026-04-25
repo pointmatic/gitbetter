@@ -44,6 +44,14 @@ Before staging, `git-push` does a read-only `git fetch` against the upstream and
 
 After pushing from a non-`main` branch, `git-push` shows the Actions and Compare URLs and asks a single question: *"Merge complete? Clean up (switch to main, pull, delete branch)?"*. The default is **no** (keep the branch). Pass `--keep` (or `-k`) to skip the prompt entirely — handy for multi-commit feature branches.
 
+If the push is rejected, `git-push` offers three explicit recovery options:
+
+1. **Retry with `--force-with-lease`** — safe force push; fixes divergence from earlier history rewrites.
+2. **Roll back commit** — undoes the commit (`git reset --soft HEAD~1`) so your changes stay staged, ready to retry with a branch name.
+3. **Abort** — leave everything as-is and resolve manually.
+
+The default is **Roll back** when the remote rejects with a branch-protection error (e.g. `GH006`) or when you're pushing to `main` without a `branch_name`; otherwise the default is **Abort**. Amend mode (`--amend`) bypasses the menu and auto-uses `--force-with-lease`.
+
 ### git-tag
 
 Validate a semver tag, show the latest tag for context, and push to origin.

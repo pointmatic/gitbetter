@@ -36,6 +36,15 @@ Examples:
   git-push --amend "updated message"
   git-push "wip" feature-xyz --keep
 
+On rejection:
+  If the push is rejected, git-push offers three explicit recovery options:
+    1) Retry with --force-with-lease  (fixes divergence, not branch protection)
+    2) Roll back commit               (keep changes staged; retry with a branch name)
+    3) Abort                          (no changes; resolve manually)
+  Default is "Roll back" when the rejection is due to branch protection or when
+  pushing to main with no branch_name argument; otherwise "Abort". Amend mode
+  always auto-uses --force-with-lease and skips the menu.
+
 Homepage: ${GITBETTER_HOMEPAGE}
 EOF
 }
@@ -233,16 +242,65 @@ if ${AMEND}; then
         fail "Force-push failed — resolve manually."
     fi
 else
-    if run_cmd git push origin "${CURRENT_BRANCH}"; then
+    # Capture stderr to a tempfile while still streaming it to the user
+    # in real time. We need the captured text to detect branch-protection
+    # rejections so we can default the recovery prompt to "Roll back".
+    PUSH_ERR_FILE="$(mktemp -t gitbetter-push.XXXXXX)"
+    trap 'rm -f "${PUSH_ERR_FILE}"' EXIT
+
+    echo -e "  ${DIM}\$ git push origin ${CURRENT_BRANCH}${RESET}"
+    if git push origin "${CURRENT_BRANCH}" 2> >(tee "${PUSH_ERR_FILE}" >&2); then
         success "Pushed successfully."
     else
-        warn "Push was rejected."
-        if ask_yn "Retry with --force-with-lease? (safe force push)"; then
-            run_cmd git push --force-with-lease origin "${CURRENT_BRANCH}"
-            success "Force-pushed successfully."
-        else
-            fail "Push failed — resolve manually."
+        PUSH_STDERR="$(cat "${PUSH_ERR_FILE}")"
+        PROTECTED=false
+        if [[ "${PUSH_STDERR}" == *"protected branch"* \
+           || "${PUSH_STDERR}" == *"GH006"* ]]; then
+            PROTECTED=true
         fi
+
+        echo ""
+        if ${PROTECTED}; then
+            warn "Push to ${M}${CURRENT_BRANCH}${RESET} was blocked by branch protection."
+        else
+            warn "Push was rejected."
+        fi
+
+        # Default selection: protection → 2 (roll back); on main with no
+        # branch arg → 2 (roll back); else → 3 (abort).
+        DEFAULT_CHOICE=3
+        if ${PROTECTED}; then
+            DEFAULT_CHOICE=2
+        elif [[ "${CURRENT_BRANCH}" == "main" && -z "${BRANCH_NAME}" ]]; then
+            DEFAULT_CHOICE=2
+        fi
+
+        ask_choice "What now?" "${DEFAULT_CHOICE}" \
+            "Retry with --force-with-lease (safe force push — fixes divergence, not branch protection)" \
+            "Roll back commit (keep changes staged; retry with a branch name)" \
+            "Abort"
+
+        case "${REPLY}" in
+            1)
+                if run_cmd git push --force-with-lease origin "${CURRENT_BRANCH}"; then
+                    success "Force-pushed successfully."
+                else
+                    fail "Force-push failed — resolve manually."
+                fi
+                ;;
+            2)
+                run_cmd git reset --soft HEAD~1
+                echo ""
+                success "Commit rolled back. Changes are still staged."
+                info "${BOLD}Your message:${RESET} ${C}\"${COMMIT_MSG}\"${RESET}"
+                info "${BOLD}Retry with:${RESET}   ${DIM}git-push \"${COMMIT_MSG}\" <branch-name>${RESET}"
+                echo ""
+                exit 0
+                ;;
+            3|*)
+                fail "Push failed — resolve manually."
+                ;;
+        esac
     fi
 fi
 

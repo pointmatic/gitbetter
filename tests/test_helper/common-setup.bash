@@ -82,6 +82,25 @@ make_remote_ahead() {
     cd "${here}"
 }
 
+# Install a `pre-receive` hook on the bare remote that rejects every
+# push with the given message on stderr. Used to simulate branch
+# protection and other server-side rejection scenarios.
+#
+# Usage:
+#   block_pushes_to_remote "remote: error: GH006: Protected branch update failed"
+#
+# Requires: setup_bare_remote to have been called.
+block_pushes_to_remote() {
+    local reason="$1"
+    local hook="${BARE_REMOTE}/hooks/pre-receive"
+    cat > "${hook}" <<EOF
+#!/bin/sh
+echo "${reason}" >&2
+exit 1
+EOF
+    chmod +x "${hook}"
+}
+
 # Push an arbitrary tag to the bare remote from a sibling clone without
 # creating the tag locally in the main test repo.
 #

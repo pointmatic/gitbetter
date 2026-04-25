@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-04-25
+
+Push-rejection recovery release. When `git push` is rejected, `git-push` now presents an explicit **3-option** menu (retry with `--force-with-lease` / roll back commit / abort) instead of a binary force-or-abort prompt. The new **roll back** option undoes the orphan commit with `git reset --soft HEAD~1` and prints a copy/paste retry hint so the user can immediately put the work on a feature branch — solving the most common branch-protection footgun without losing any work.
+
+### Added
+
+- `lib/ui.sh`: new `ask_choice <prompt> <default> <option1> <option2> [...]` helper. Prints a numbered menu, accepts digits only, treats Enter as the default, and re-prompts once on invalid input before falling back to the default. Sets `REPLY` to the 1-indexed selection.
+- `git-push`: post-rejection `What now?` menu with three options:
+  1. **Retry with `--force-with-lease`** (safe force push — fixes divergence, not branch protection).
+  2. **Roll back commit** (`git reset --soft HEAD~1`; staged changes preserved; prints original commit message + retry hint).
+  3. **Abort** (matches the previous abort behavior).
+- `git-push`: stderr capture during `git push` (via `tee` to a `mktemp` tempfile, cleaned by `trap`) so we can detect branch-protection rejections by pattern (`protected branch`, `GH006`) and pick a sensible default.
+- `git-push --help`: new "On rejection" section documenting the three recovery options.
+- `tests/ui.bats`: 5 new unit tests for `ask_choice` covering Enter-default, valid-digit selection, single re-prompt on invalid, two-invalid → default fallback, and menu rendering.
+- `tests/git-push.bats`: 5 new tests covering protected-rejection on main with explicit choice and Enter (default = roll back), generic rejection on a feature branch with Enter (default = abort) and explicit roll back, and amend-mode rejection (no menu, no roll-back option).
+- `tests/test_helper/common-setup.bash`: new `block_pushes_to_remote <reason>` helper that installs a `pre-receive` hook on the bare remote rejecting every push with a configurable stderr message.
+
+### Changed
+
+- `git-push` non-amend rejection path replaces the old `ask_yn "Retry with --force-with-lease? (y/N)"` with the new 3-option menu. Default selection is context-aware:
+  - Branch protection detected → **Roll back**.
+  - On `main` with no `branch_name` argument → **Roll back**.
+  - Otherwise (e.g. feature branch with non-FF) → **Abort**.
+- `git-push` now displays the verbatim `git push` stderr above the menu so the user always sees git's own rejection message before choosing.
+
+### Unchanged
+
+- `git-push --amend` continues to auto-use `--force-with-lease` with no recovery prompt; on failure it `fail`s with "Force-push failed — resolve manually." Rolling back an amend is semantically muddy and intentionally not offered.
+
+### Design notes
+
+- **Why `--soft` reset.** `git reset --soft HEAD~1` keeps the working tree and index untouched, so the user's changes remain exactly where they were after `git add -A` — ready to be re-committed onto a feature branch with a single `git-push "msg" feature-xyz` retry. `--mixed` would force a re-stage; `--hard` would lose work.
+- **Why detect only branch protection.** Stderr parsing across git versions and hosting providers is brittle. Branch protection has the most stable, recognizable pattern (`protected branch` / `GH006`) and is the *only* case where rolling back is unambiguously correct (force-with-lease cannot bypass server-side protection rules). Other rejection causes (signed-commit policy, file-size hooks, generic pre-receive declines) are presented neutrally with abort as the default.
+- **Why Enter defaults to abort on feature branches.** On a feature branch, force-with-lease is the most common right answer but also the only destructive option, and rollback is rarely desired. Defaulting to abort keeps Enter-spam safe; users explicitly type `1` when they mean to force-push.
+- **No letter shortcuts (`f`/`r`/`a`).** Numbers + Enter keep the helper simple and consistent with the existing `ask_yn` idiom. Letter shortcuts noted as a future enhancement.
+- **Auto `git pull --rebase` on non-FF still deferred.** Same rationale as v1.2.0 (no-auto-pull): pulling is a mutation that can fail in ways gitbetter shouldn't paper over. The user runs `git pull --rebase` themselves when ready.
+
 ## [1.3.1] — 2026-04-17
 
 Docs-only patch release (Story E.a). No behavior changes.

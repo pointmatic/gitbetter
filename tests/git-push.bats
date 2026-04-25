@@ -39,7 +39,7 @@ teardown() {
 @test "git-push: --version prints version and homepage, exits 0" {
     run "${GIT_PUSH_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-push v1.3.1"* ]]
+    [[ "${output}" == *"gitbetter git-push v1.4.0"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 
@@ -200,6 +200,91 @@ teardown() {
     [ "${output}" = "feat/y" ]
     run git branch --list feat/y
     [[ "${output}" == *"feat/y"* ]]
+}
+
+# ── Push rejection 3-option recovery (E.b) ──────────────────
+
+@test "git-push on main, protected rejection: choose 2 → roll back commit" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    block_pushes_to_remote "remote: error: GH006: Protected branch update failed"
+    PRE_COUNT="$(git rev-list --count HEAD)"
+    echo "work" > work.txt
+    # 4 prompts: continue (y), stage (y), commit (y), choice (2 = rollback)
+    run bash -c "printf 'y\ny\ny\n2\n' | '${GIT_PUSH_SH}' 'feat: thing'"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"blocked by branch protection"* ]]
+    [[ "${output}" == *"Commit rolled back"* ]]
+    [[ "${output}" == *"Your message:"* ]]
+    [[ "${output}" == *"Retry with:"* ]]
+    [[ "${output}" == *"feat: thing"* ]]
+    POST_COUNT="$(git rev-list --count HEAD)"
+    [ "${PRE_COUNT}" = "${POST_COUNT}" ]
+    # Changes should still be in the index
+    run git diff --cached --name-only
+    [[ "${output}" == *"work.txt"* ]]
+}
+
+@test "git-push on main, protected rejection: Enter (default) selects roll back" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    block_pushes_to_remote "remote: error: GH006: Protected branch update failed"
+    PRE_COUNT="$(git rev-list --count HEAD)"
+    echo "work" > work.txt
+    # 4th input is empty (Enter) → default 2 under protection
+    run bash -c "printf 'y\ny\ny\n\n' | '${GIT_PUSH_SH}' 'feat: thing'"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Commit rolled back"* ]]
+    POST_COUNT="$(git rev-list --count HEAD)"
+    [ "${PRE_COUNT}" = "${POST_COUNT}" ]
+}
+
+@test "git-push on feature branch, generic rejection: Enter (default) aborts" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    block_pushes_to_remote "remote: error: pre-receive hook declined"
+    echo "work" > work.txt
+    # On a feature branch, default is 3 (abort), not 2 (rollback)
+    run bash -c "printf 'y\ny\ny\n\n' | '${GIT_PUSH_SH}' 'msg' feat/x"
+    [ "${status}" -ne 0 ]
+    [[ "${output}" == *"Push was rejected"* ]]
+    [[ "${output}" == *"Push failed"* ]]
+    [[ "${output}" != *"blocked by branch protection"* ]]
+    [[ "${output}" != *"Commit rolled back"* ]]
+}
+
+@test "git-push on feature branch, generic rejection: choose 2 → roll back" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    block_pushes_to_remote "remote: error: pre-receive hook declined"
+    git switch -q -c feat/y
+    PRE_COUNT="$(git rev-list --count HEAD)"
+    echo "work" > work.txt
+    run bash -c "printf 'y\ny\ny\n2\n' | '${GIT_PUSH_SH}' 'msg'"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Commit rolled back"* ]]
+    POST_COUNT="$(git rev-list --count HEAD)"
+    [ "${PRE_COUNT}" = "${POST_COUNT}" ]
+}
+
+@test "git-push --amend rejection: no menu, no roll-back option" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    block_pushes_to_remote "remote: error: pre-receive hook declined"
+    echo "work" > work.txt
+    # Amend path: no prompt, auto force-with-lease, fails on hook rejection.
+    # Inputs: continue (y), stage (y), commit (y) — then push fails directly.
+    run bash -c "printf 'y\ny\ny\n' | '${GIT_PUSH_SH}' --amend 'amended msg'"
+    [ "${status}" -ne 0 ]
+    [[ "${output}" != *"Roll back"* ]]
+    [[ "${output}" != *"1) Retry"* ]]
+    [[ "${output}" != *"What now?"* ]]
+    [[ "${output}" == *"Force-push failed"* ]]
 }
 
 @test "git-push: on non-main branch, answer y at cleanup → switch main, delete branch" {

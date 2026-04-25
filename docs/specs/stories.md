@@ -323,7 +323,7 @@ Rework the post-push branch cleanup flow in `git-push.sh` to match how people ac
   - `git-push "msg" feat/x --keep` → no prompt, no cleanup; branch kept.
   - `git-push "msg"` on main → no Branch Workflow section (unchanged).
 
-## Phase E: Documentation & Release
+## Phase E: Documentation & Release, Post-Release Improvements
 
 ### Story E.a: v1.3.1 Final README and Docs Polish [Done]
 
@@ -334,6 +334,105 @@ Finalize all documentation for the v1.3.1 release.
 - [x] Remove `scripts/spike-tag.sh` (throwaway from A.c) — directory `scripts/` removed; CI workflow already did not reference it.
 - [x] Verify: README renders correctly on GitHub, all links work (user verifies after push).
 - [x] Bump version to v1.3.1 in source (`lib/ui.sh` and all `tests/*.bats` version assertions).
+
+### Story E.b: v1.4.0 Push-rejection 3-option recovery prompt [Done]
+
+Replace the current binary `Retry with --force-with-lease? (y/n)` prompt that fires after a failed `git push` with a context-aware **3-option** choice. The current flow is a footgun on protected-branch rejections: force-with-lease can't bypass branch protection, so the user's only options today are an attempt that's guaranteed to fail and an abort that strands a fresh commit on local `main`. The new flow adds an explicit **roll back commit** option that undoes the orphan commit while preserving the user's changes (staged), so they can immediately rerun `git-push "msg" feature-branch` to put the work where it belongs.
+
+**Design principles:**
+
+- **Safe default**: Enter must never destroy work or attempt a force push. Default = **Abort** unless context strongly suggests otherwise (protected-branch detected, or main with no `branch_name`).
+- **No silent assumptions**: the user always sees the underlying `git push` stderr verbatim — the prompt augments git's output, never replaces it.
+- **Rollback preserves work**: `git reset --soft HEAD~1` keeps the index + working tree intact so the user's changes are immediately reusable.
+- **Amend mode unchanged**: `--amend` continues to auto-use `--force-with-lease` with no recovery prompt at all (the existing behavior). Rolling back an amend is semantically muddy and adds confusion without clear benefit.
+- **Detect only the obvious**: stderr-pattern detection is limited to **branch protection** (most common case where rollback is clearly right). Everything else is presented neutrally.
+
+**`lib/ui.sh` — new helper `ask_choice`:**
+
+- [x] Add `ask_choice <prompt> <default_index> <option1> <option2> [<option3> ...]`:
+  - Prints the prompt, then a numbered menu (`  1) <option1>` … `  N) <optionN>`).
+  - Reads a single line; Enter selects `<default_index>`.
+  - Accepts digits `1`–`N` only (no letter shortcuts in this version).
+  - Invalid input: re-prompts **once**, then falls back to default.
+  - Sets `REPLY` to the selected 1-indexed integer (no stdout echo, so callers can use it without `>/dev/null`).
+  - Renders default with brackets in the prompt: `Choice [2]: `.
+- [x] Add shellcheck disable comments where needed; ensure no new unused-var warnings.
+
+**`git-push.sh` — push capture + 3-option flow:**
+
+- [x] Replace the bare `if run_cmd git push origin "${CURRENT_BRANCH}"; then` with a version that **captures stderr** while still streaming it to the user:
+  - Run `git push origin "${CURRENT_BRANCH}" 2> >(tee "${PUSH_ERR_FILE}" >&2)` using a per-invocation tempfile via `mktemp`.
+  - On non-zero exit, read the captured stderr into a variable `PUSH_STDERR`.
+- [x] **Amend branch** (`AMEND=true`): keep current behavior unchanged — auto-uses `--force-with-lease`, no prompt, `fail` on rejection. (Earlier draft incorrectly described an `ask_yn` here; that prompt actually lived in the non-amend path and is what the new menu replaces.)
+- [x] **Non-amend branch** (`AMEND=false`):
+  - [x] Detect branch protection: `if [[ "${PUSH_STDERR}" == *"protected branch"* || "${PUSH_STDERR}" == *"GH006"* ]]; then PROTECTED=true`.
+  - [x] Print a contextual header line:
+    - Protected detected → `warn "Push to ${M}${CURRENT_BRANCH}${RESET} was blocked by branch protection."`
+    - Otherwise → `warn "Push was rejected."` (matches today's wording).
+  - [x] Determine default option:
+    1. `PROTECTED=true` → default **2** (Roll back).
+    2. `CURRENT_BRANCH == main && BRANCH_NAME == ""` → default **2** (Roll back).
+    3. Otherwise → default **3** (Abort).
+  - Call `ask_choice "What now?" <default> \
+        "Retry with --force-with-lease (safe force push — fixes divergence, not branch protection)" \
+        "Roll back commit (keep changes staged; retry with a branch name)" \
+        "Abort"`
+  - Branch on `${REPLY}`:
+    - **1** → `run_cmd git push --force-with-lease origin "${CURRENT_BRANCH}"`; on success `success "Force-pushed successfully."`; on failure `fail "Force-push failed — resolve manually."`.
+    - **2** → `run_cmd git reset --soft HEAD~1`; print:
+      ```
+      ✔ Commit rolled back. Changes are still staged.
+        Your message: "<COMMIT_MSG>"
+        Retry with:   git-push "<COMMIT_MSG>" <branch-name>
+      ```
+      Then `exit 0` cleanly (do not continue to Step 7 / Branch Workflow — there's no commit to celebrate).
+    - **3** → `fail "Push failed — resolve manually."` (matches today's abort).
+- [x] Use a single `mktemp -t gitbetter-push.XXXXXX` for the stderr tempfile and `trap 'rm -f "${PUSH_ERR_FILE}"' EXIT` to clean up.
+
+**Tests (`tests/git-push.bats`):**
+
+Use a bare-remote `pre-receive` hook to simulate rejection. Helper to add to `tests/test_helper/common-setup.bash`:
+
+- [x] `block_pushes_to_remote <reason_string>` — installs `${BARE_REMOTE}/hooks/pre-receive` that exits 1 with the given message on stderr.
+
+BATS cases added (5 in `git-push.bats`, 5 in new `tests/ui.bats`):
+
+- [x] **Protected-branch rejection on main, choose 2 (roll back)**: explicit `2` input. Asserts "blocked by branch protection", "Commit rolled back", "Your message:", "Retry with:", commit count unchanged, and `work.txt` still in the index.
+- [x] **Protected-branch rejection on main, Enter (default) selects roll back**: empty 4th input → same rollback outcome (verifies default = 2 under protection).
+- [x] **Generic rejection on feature branch, Enter (default) aborts**: empty 4th input on a feature branch → exit non-zero, "Push was rejected.", "Push failed", no rollback, no protection wording.
+- [x] **Generic rejection on feature branch, choose 2 explicitly (roll back)**: even though default is abort here, user can still pick 2; verify rollback works.
+- [x] **`--amend` rejection has no menu and no roll-back option**: amend auto-force-pushes, hook rejects, script `fail`s with "Force-push failed". Output does **not** contain "Roll back", "What now?", or `1) Retry`.
+- [x] **`ask_choice` helper unit tests** (new file `tests/ui.bats`):
+  - Enter selects default index.
+  - Valid digit selects that index.
+  - Out-of-range digit re-prompts once, then valid digit wins.
+  - Two invalid inputs fall back to default with warning.
+  - Prompt and numbered options are rendered.
+
+**Docs:**
+
+- [x] Update `git-push --help`: added "On rejection" section with the 3 options and default-selection rules.
+- [x] Update `README.md` `git-push` section: added a numbered list of the 3 recovery options plus the default-selection summary.
+- [x] Update `CHANGELOG.md` under `[1.4.0]`: full Added / Changed / Unchanged / Design notes sections.
+- [x] Bump `GITBETTER_VERSION` in `lib/ui.sh` to `1.4.0`.
+- [x] Update `tests/*.bats` version assertions from `v1.3.1` → `v1.4.0`.
+
+**Verify:**
+
+- [x] `shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh` clean.
+- [x] `bats tests/` passes (50 tests: 40 prior + 5 new E.b push-rejection tests + 5 new `ask_choice` unit tests).
+- [ ] Manual smoke on a real repo:
+  - Real protected-`main` rejection → choose 2 → verify rollback, staged changes intact, retry hint shown.
+  - Real protected-`main` rejection → Enter → same as above (default = 2).
+  - Real feature-branch divergence → choose 1 → force-with-lease succeeds.
+  - Real feature-branch rejection → Enter → aborts cleanly (default = 3); commit remains on local feature branch.
+  - `--amend` rejection → no menu, script fails with "Force-push failed — resolve manually."
+
+**Out of scope (deferred to Future):**
+
+- Letter shortcuts for the menu (`f`/`r`/`a`).
+- Auto-detection of additional rejection causes (pre-receive hooks beyond branch protection, signed-commit policies, etc.) — currently presented neutrally.
+- Auto `git pull --rebase` integration on non-FF rejection (intentional — see v1.2.0 design notes on no-auto-pull).
 
 ---
 

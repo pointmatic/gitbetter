@@ -43,7 +43,7 @@ teardown() {
 @test "gitbetter: --version prints version and homepage, exits 0" {
     run "${GITBETTER_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter v1.3.1"* ]]
+    [[ "${output}" == *"gitbetter v1.4.0"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 
