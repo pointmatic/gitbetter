@@ -20,10 +20,12 @@ build/
 *.ipynb_checkpoints
 
 # Pyve virtual environment
+.venv
+.pyve/envs
 .pyve/testenv
 .envrc
 .env
-.venv
+.vscode/settings.json
 
 # project-guide
 docs/project-guide/**/*.bak.*

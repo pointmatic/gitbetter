@@ -37,7 +37,7 @@ teardown() {
 @test "git-tag: --version prints version and homepage, exits 0" {
     run "${GIT_TAG_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-tag v1.4.0"* ]]
+    [[ "${output}" == *"gitbetter git-tag v1.5.0"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 
@@ -169,4 +169,73 @@ teardown() {
     # Verify tag exists on the bare remote
     run git ls-remote --tags origin
     [[ "${output}" == *"refs/tags/v0.0.1"* ]]
+}
+
+# ── --prefix flag (E.c) ─────────────────────────────────────
+
+@test "git-tag --prefix: creates and pushes prefixed tag (flag after semver)" {
+    run bash -c "echo y | '${GIT_TAG_SH}' v1.0.0 --prefix npm"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"npm-v1.0.0"* ]]
+    [[ "${output}" == *"All done."* ]]
+    run git tag -l 'npm-v1.0.0'
+    [ "${output}" = "npm-v1.0.0" ]
+    run git tag -l 'v1.0.0'
+    [ "${output}" = "" ]
+    run git ls-remote --tags origin
+    [[ "${output}" == *"refs/tags/npm-v1.0.0"* ]]
+}
+
+@test "git-tag --prefix: flag before semver produces same result" {
+    run bash -c "echo y | '${GIT_TAG_SH}' --prefix ios v1.0.0"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"ios-v1.0.0"* ]]
+    run git tag -l 'ios-v1.0.0'
+    [ "${output}" = "ios-v1.0.0" ]
+}
+
+@test "git-tag --prefix: with branch arg, push includes branch" {
+    run bash -c "echo y | '${GIT_TAG_SH}' v1.0.0 main --prefix backend"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"backend-v1.0.0"* ]]
+    run git tag -l 'backend-v1.0.0'
+    [ "${output}" = "backend-v1.0.0" ]
+}
+
+@test "git-tag --prefix: missing value exits 1 with error" {
+    run bash -c "'${GIT_TAG_SH}' v1.0.0 --prefix"
+    [ "${status}" -eq 1 ]
+    [[ "${output}" == *"--prefix requires a value"* ]]
+}
+
+@test "git-tag --prefix: invalid characters exit 1 with error" {
+    run bash -c "'${GIT_TAG_SH}' v1.0.0 --prefix 'bad name'"
+    [ "${status}" -eq 1 ]
+    [[ "${output}" == *"Invalid prefix"* ]]
+}
+
+@test "git-tag --prefix: remote duplicate check uses full prefixed tag" {
+    git push -q -u origin main
+    tag_on_remote "npm-v1.0.0"
+    run bash -c "'${GIT_TAG_SH}' v1.0.0 --prefix npm"
+    [ "${status}" -eq 1 ]
+    [[ "${output}" == *"npm-v1.0.0"* ]]
+    [[ "${output}" == *"already exists on remote"* ]]
+}
+
+@test "git-tag --prefix: latest-tag display scoped to prefix family" {
+    git tag npm-v0.9.0
+    git tag v2.0.0
+    run bash -c "echo n | '${GIT_TAG_SH}' v1.0.0 --prefix npm"
+    [[ "${output}" == *"Latest (npm-v*):"* ]]
+    [[ "${output}" == *"npm-v0.9.0"* ]]
+    [[ "${output}" != *"v2.0.0"* ]]
+}
+
+@test "git-tag --help: output contains --prefix and updated usage" {
+    run bash -c "'${GIT_TAG_SH}' --help"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"--prefix"* ]]
+    [[ "${output}" == *"NAME-"* ]]
+    [[ "${output}" == *"[--prefix NAME]"* ]]
 }

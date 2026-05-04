@@ -434,6 +434,82 @@ BATS cases added (5 in `git-push.bats`, 5 in new `tests/ui.bats`):
 - Auto-detection of additional rejection causes (pre-receive hooks beyond branch protection, signed-commit policies, etc.) — currently presented neutrally.
 - Auto `git pull --rebase` integration on non-FF rejection (intentional — see v1.2.0 design notes on no-auto-pull).
 
+### Story E.c: v1.5.0 'git-tag --prefix' flag [Done]
+
+Add a `--prefix <name>` flag to `git-tag` that prepends a label to the semver tag, producing tags like `npm-v2.1.1`, `ios-v1.0.0`, or `backend-v3.2.0`. This covers monorepos and multi-artifact projects where multiple independently-versioned components share a single git repository.
+
+**Design decisions (override if needed):**
+
+- **Separator is always `-`**: `--prefix npm` + `v2.1.1` → final tag `npm-v2.1.1`. The prefix value does not include the separator; it is auto-inserted. Full separator control is deferred.
+- **`vX.Y.Z` validation is unchanged**: the user still passes the semver part (`v2.1.1`), not the full tag. The prefix is purely an envelope.
+- **Latest-tag display is scoped to the prefix family** when `--prefix` is given: the "Latest:" line filters `<prefix>-v*` tags so the user sees the right version history, not unrelated components.
+- **Without `--prefix`**: all existing behavior is identical. No regressions.
+
+**`git-tag.sh` — argument parsing:**
+
+- [x] Replace the current two-line positional parse (`TAG="${1:-}"`, `BRANCH_NAME="${2:-}"`) with a `while [[ $# -gt 0 ]]; do case "$1"` loop. Positional slots (first non-flag → `TAG`, second → `BRANCH_NAME`) fill in order; unknown flags `fail`. Keep the existing `case "${1:-}" in --help ... --version ...` early-exit block before the loop (consistent with `git-push.sh`).
+- [x] `--prefix <name>` flag:
+  - Consumes the next argument as `PREFIX`. If the next argument is absent or starts with `--`, `fail "--prefix requires a value."`.
+  - Validate `PREFIX` against `^[a-zA-Z0-9][a-zA-Z0-9._-]*$`; `fail "Invalid prefix '${PREFIX}'..."` with guidance on allowed characters.
+- [x] After parsing, derive `FULL_TAG`:
+  ```bash
+  if [[ -n "${PREFIX}" ]]; then FULL_TAG="${PREFIX}-${TAG}"
+  else                          FULL_TAG="${TAG}"
+  fi
+  ```
+- [x] Use `FULL_TAG` everywhere a git tag name is needed: local duplicate check, remote `ls-remote` probe, `git tag`, `git push origin`, outcome `git show`, and all user-visible "New tag:" displays.
+- [x] `TAG` (the `vX.Y.Z` part) retains its existing semver validation — unchanged.
+
+**`git-tag.sh` — latest-tag display:**
+
+- [x] When `PREFIX` is set, query `git tag -l "${PREFIX}-v*"` and sort that family to find `LATEST_TAG`. Display as `Latest (${PREFIX}-v*): npm-v1.9.0`.
+- [x] When `PREFIX` is unset, existing `git tag -l 'v*'` query and display unchanged.
+
+**`git-tag.sh` — summary banner and confirmation:**
+
+- [x] "New tag:" line shows `FULL_TAG` (e.g., `npm-v2.1.1`), not just the semver part.
+- [x] `confirm "Create and push tag ${FULL_TAG} to origin?"` uses `FULL_TAG`.
+
+**`git-tag.sh` — help text:**
+
+- [x] Update `Usage:` to `git-tag [--prefix NAME] vX.Y.Z [branch_name]`.
+- [x] Add `--prefix NAME` under `Options:` with description: `Prepend NAME- to the tag (e.g., --prefix npm → npm-v1.0.0). NAME must match [a-zA-Z0-9][a-zA-Z0-9._-]*.`
+- [x] Updated examples.
+
+**Tests (`tests/git-tag.bats`):**
+
+- [x] `git-tag --prefix npm v1.0.0`: creates and pushes tag `npm-v1.0.0`; verify `git tag -l 'npm-v1.0.0'` non-empty after run; verify `v1.0.0` does **not** exist locally.
+- [x] `git-tag v1.0.0 --prefix npm`: flag after positional — same outcome as above (order-independence).
+- [x] `git-tag v1.0.0 main --prefix ios`: with branch arg; tag `ios-v1.0.0` pushed with branch.
+- [x] `--prefix` missing value: `git-tag v1.0.0 --prefix` (no next arg) → exit non-zero, output contains `--prefix requires a value`.
+- [x] `--prefix` invalid chars: `git-tag v1.0.0 --prefix "bad name"` (contains space) → exit non-zero, output contains `Invalid prefix`.
+- [x] Remote duplicate check uses full tag: install `npm-v1.0.0` on remote (via `tag_on_remote`), then `git-tag v1.0.0 --prefix npm` → rejected with "already exists on remote".
+- [x] Latest-tag display scoped to prefix: create local tags `npm-v0.9.0` and `v2.0.0`; run `git-tag v1.0.0 --prefix npm`; output "Latest (npm-v*):" shows `npm-v0.9.0`, not `v2.0.0`.
+- [x] `git-tag --help`: output contains `--prefix`, `NAME-`, and updated usage line.
+
+**Docs:**
+
+- [x] Update `README.md` `git-tag` section: added `--prefix npm` and `--prefix ios` examples, plus a monorepo paragraph.
+- [x] Update `CHANGELOG.md` under `[1.5.0]`: full Added / Changed / Design notes sections.
+- [x] Bump `GITBETTER_VERSION` in `lib/ui.sh` to `1.5.0`.
+- [x] Update `tests/*.bats` version assertions from `v1.4.0` → `v1.5.0`.
+
+**Verify:**
+
+- [x] `shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh` clean.
+- [x] `bats tests/` passes (58 tests: 50 prior + 8 new E.c tests).
+- [ ] Manual smoke on a real repo:
+  - `git-tag v1.0.0 --prefix npm` → tag `npm-v1.0.0` created and pushed; "New tag: npm-v1.0.0" shown.
+  - `git-tag v1.0.0 --prefix npm` (repeated) → rejected "already exists on remote".
+  - `git-tag v1.0.0` (no prefix) → tag `v1.0.0`; existing behavior unchanged.
+  - `git-tag v1.0.0 --prefix "bad name"` → fails with validation error.
+
+**Out of scope (deferred to Future):**
+
+- **Custom separator**: `--separator /` to produce `npm/v1.0.0`. Use case exists but adds complexity; `-` covers the common cases.
+- **Multi-prefix queries**: showing the latest tag across *all* prefixes in one run. Would require iterating prefix families; better as a separate `gitbetter tags` summary command.
+- **`@scope/pkg`-style prefixes**: slashes are not allowed in the prefix because Git tag names allow slashes but they create visual confusion and tooling edge cases. Deferred.
+
 ---
 
 ## Future

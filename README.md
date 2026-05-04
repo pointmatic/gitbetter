@@ -59,9 +59,13 @@ Validate a semver tag, show the latest tag for context, and push to origin.
 ```bash
 git-tag v1.0.0              # validate, create, and push tag
 git-tag v1.0.0 main         # push tag to specific branch
+git-tag v2.1.1 --prefix npm # create and push npm-v2.1.1
+git-tag v1.0.0 main --prefix ios
 ```
 
 Tags are validated against `vX.Y.Z` format. The most recent tag is displayed (sorted numerically, not lexicographically) so you always know where you are. Before creating the tag, `git-tag` probes `origin` and refuses to proceed if the tag already exists remotely — no silent overwrites.
+
+Use `--prefix NAME` in monorepos or multi-artifact projects to namespace tags by component (e.g., `npm-v2.1.1`, `ios-v1.0.0`, `backend-v3.2.0`). The separator is always `-`; the prefix value must match `[a-zA-Z0-9][a-zA-Z0-9._-]*`. When `--prefix` is set, the "Latest" display filters to the same prefix family so you see relevant version history only.
 
 ## Requirements
 

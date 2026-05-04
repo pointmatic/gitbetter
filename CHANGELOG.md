@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-05-04
+
+`git-tag --prefix` release. Adds a `--prefix NAME` flag to `git-tag` for monorepos and multi-artifact projects where multiple independently-versioned components share a single repository. `git-tag v2.1.1 --prefix npm` creates and pushes `npm-v2.1.1`; all existing no-prefix behavior is unchanged.
+
+### Added
+
+- `git-tag`: `--prefix NAME` flag. `NAME` is prepended to the semver tag with a `-` separator (`npm` + `v2.1.1` → `npm-v2.1.1`). The flag may appear before or after the `vX.Y.Z` positional argument and before or after the optional `branch_name`.
+- `git-tag`: prefix validation against `^[a-zA-Z0-9][a-zA-Z0-9._-]*$`. Fails with a clear error and allowed-character guidance if the value is invalid.
+- `git-tag`: when `--prefix` is set, the **Latest** line in the summary banner queries only the `<prefix>-v*` tag family (e.g., `Latest (npm-v*): npm-v0.9.0`) so users see the version history for the right component.
+- `git-tag --help`: updated usage line `[--prefix NAME] vX.Y.Z [branch_name]`, new `--prefix NAME` option, and two new examples (`--prefix npm`, `--prefix ios` with branch).
+- Eight new BATS tests in `tests/git-tag.bats` covering: flag-after-semver, flag-before-semver, with-branch-arg, missing-value, invalid-chars, remote-duplicate-uses-full-tag, latest-display-scoped-to-family, and `--help` output.
+
+### Changed
+
+- `git-tag.sh` argument parsing refactored from a two-line positional assignment to a `while [[ $# -gt 0 ]]; do case` loop, enabling flag-before-or-after-positional ordering. Existing two-arg invocations (`git-tag v1.0.0` and `git-tag v1.0.0 main`) are fully backward-compatible.
+- All internal references to the git tag name now use `FULL_TAG` (`<prefix>-<semver>` or just `<semver>` when no prefix is given): local duplicate check, `ls-remote` probe, `git tag`, `git push origin`, `git show` outcome proof, and user-facing messages.
+
+### Design notes
+
+- **Separator is always `-`.** Including the separator in the flag value (`--prefix npm-`) would produce double-dashes (`npm--v1.0.0`). Auto-inserting `-` matches the de facto convention for most package-manager and CI tagging schemes. Custom separators (e.g., `/` for `npm/v1.0.0`) are deferred.
+- **User passes the `vX.Y.Z` part, not the full tag.** The prefix is an envelope around the version number. Semver validation (`^v[0-9]+\.[0-9]+\.[0-9]+$`) is applied to `TAG` before `FULL_TAG` is assembled, so invalid semver is caught independently of the prefix.
+- **Latest tag scoped to prefix family.** Unscoped latest-tag display in a monorepo is meaningless — `v10.0.0` on the `ios` component tells you nothing about the `npm` component's history. Scoping to `<prefix>-v*` is both more useful and simpler to implement.
+- **No regressions on no-prefix path.** The `else` branch of the prefix check reproduces the original `git tag -l 'v*'` query and `v`-strip/prepend sort. All pre-v1.5.0 tests continue to pass.
+
 ## [1.4.0] — 2026-04-25
 
 Push-rejection recovery release. When `git push` is rejected, `git-push` now presents an explicit **3-option** menu (retry with `--force-with-lease` / roll back commit / abort) instead of a binary force-or-abort prompt. The new **roll back** option undoes the orphan commit with `git reset --soft HEAD~1` and prints a copy/paste retry hint so the user can immediately put the work on a feature branch — solving the most common branch-protection footgun without losing any work.
