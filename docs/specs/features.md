@@ -188,17 +188,20 @@ Support creating/switching branches and cleaning up after merge.
 
 **Behavior:**
 1. If a branch name is provided and differs from HEAD, switch to it (or create it if it doesn't exist).
-2. After pushing, if the current branch is not `main`, enter the branch-PR flow.
-3. Inform the user to open a PR and wait for CI.
-4. Attempt to build the GitHub Actions URL from the remote and offer to open it in the browser.
-5. Wait for the user to press Enter when CI is done.
-6. Offer (default no) to delete the feature branch and pull latest main: `git switch main && git fetch --prune && git pull && git branch -D <branch>`.
+2. **Branch resurrection guard**: when about to *create* a new branch, consult the cleanup tombstone at `${GIT_DIR}/gitbetter-deleted-branches`. If the requested name appears there, warn with the recorded date and require explicit confirmation (default no = abort). On confirmation, remove the entry and proceed.
+3. After pushing, if the current branch is not `main`, enter the branch-PR flow.
+4. Inform the user to open a PR and wait for CI.
+5. Attempt to build the GitHub Actions URL from the remote and offer to open it in the browser.
+6. Wait for the user to press Enter when CI is done.
+7. Offer (default no) to delete the feature branch and pull latest main: `git switch main && git fetch --prune && git pull && git branch -D <branch>`. On successful delete, append `<branch>\t<YYYY-MM-DD>` to the cleanup tombstone.
 
 **Edge Cases:**
-- Branch already exists locally → switch to it instead of creating.
+- Branch already exists locally → switch to it instead of creating (resurrection guard does not apply).
 - Remote URL is not GitHub → skip Actions URL; still offer cleanup.
-- User declines cleanup → script ends; branch is left as-is.
+- User declines cleanup → script ends; branch is left as-is; no tombstone written.
 - Push rejected → offer `--force-with-lease` retry before entering the branch-PR flow.
+- Tombstone file missing or empty → resurrection guard is silent.
+- Tombstone hit + user confirms re-creation → entry removed; future pushes to the same name are silent until a subsequent cleanup writes a fresh tombstone.
 
 ### FR-6: git-tag — Semver Tag Validation and Push
 

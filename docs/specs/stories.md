@@ -577,6 +577,83 @@ Exclude `docs/project-guide` from `git add` when the project uses the [`project-
 - **`git-tag` integration**: tags don't stage paths, so there is nothing to exclude. No-op by design.
 - **`.gitignore` cooperation**: deliberately avoided — `.gitignore` would block ALL git tooling, including the user's manual `git add`. The pathspec approach is intentionally `git-push`-local.
 
+### Story E.e: v1.6.1 Branch resurrection guard via cleanup tombstone [Done]
+
+Prevent accidental "branch resurrection" — the failure mode where a user runs `git-push "msg" feat/x` after the cleanup flow has already deleted `feat/x` post-merge. Today, this silently creates a new branch named `feat/x` from current HEAD (typically `main` plus any subsequent work), producing a divergent branch reusing a retired name. The fix: when the cleanup flow deletes a branch, drop a tombstone entry; when `git-push` is about to create a new branch with that name, warn the user and require confirmation.
+
+**Design principles:**
+
+- **Local-only state**: the tombstone lives in `${GIT_DIR}/gitbetter-deleted-branches`, never committed, never synced. It's gitbetter's private bookkeeping.
+- **Precise signal**: only branches that *gitbetter itself* deleted via its cleanup flow are tombstoned. Manual `git branch -D` or GitHub auto-delete don't write tombstones — by design, since those have ambiguous intent.
+- **Default safe**: the resurrection prompt defaults to **no** (abort), matching the rest of the abort-gate idiom.
+- **Self-clearing on confirm**: when the user explicitly confirms re-creation, the tombstone entry is removed so subsequent intentional uses of that branch name are silent. A future cleanup of the same branch writes a fresh tombstone.
+- **No effect on switching to existing branches**: the guard only fires in the "new branch" leg (`git switch -c`). Existing local branches are switched into without comment, as today.
+
+**`git-push.sh` — tombstone helpers:**
+
+- [x] After argument parsing (alongside the existing `REPO_ROOT_PATH` block), compute:
+  ```bash
+  TOMBSTONE_FILE=""
+  GIT_DIR_PATH="$(git rev-parse --git-dir 2>/dev/null || true)"
+  if [[ -n "${GIT_DIR_PATH}" ]]; then
+      TOMBSTONE_FILE="${GIT_DIR_PATH}/gitbetter-deleted-branches"
+  fi
+  ```
+- [x] Define two small helpers (inline in `git-push.sh`, not exported to `lib/ui.sh` — they are command-specific):
+  - `tombstone_lookup <branch>` → echoes the date for the most recent entry matching `<branch>`, or empty string if absent.
+  - `tombstone_remove <branch>` → strips every entry for `<branch>` from the file (one re-creation can clear past entries).
+
+**`git-push.sh` — guard in branch-switch step:**
+
+- [x] In the **new branch** leg of the existing `if git show-ref --verify --quiet "refs/heads/${BRANCH_NAME}"` check, *before* `run_cmd git switch -c`, run `tombstone_lookup`. If non-empty:
+  ```
+  warn "Branch ${BRANCH_NAME} was cleaned up by gitbetter on <date>."
+  info "Re-creating it from current HEAD will produce a new branch with the same name."
+  info "If you meant to start fresh work, consider a different name."
+  ask_yn "Re-create ${BRANCH_NAME} from current HEAD?" → default no → exit 0 cleanly with "Aborted."
+  ```
+- [x] On yes, call `tombstone_remove` and fall through to `git switch -c`.
+
+**`git-push.sh` — tombstone write in cleanup flow:**
+
+- [x] After `run_cmd git branch -D "${CURRENT_BRANCH}"` succeeds in the cleanup block, append the tombstone entry:
+  ```bash
+  if [[ -n "${TOMBSTONE_FILE}" ]]; then
+      printf '%s\t%s\n' "${CURRENT_BRANCH}" "$(date -u +%Y-%m-%d)" >> "${TOMBSTONE_FILE}"
+  fi
+  ```
+
+**`git-tag.sh` and `gitbetter.sh`:** no changes.
+
+**Tests (`tests/git-push.bats`):**
+
+- [x] **Tombstone written on cleanup**: full push + cleanup-y flow on `feat/x`. After, assert `${GIT_DIR}/gitbetter-deleted-branches` exists and contains a line starting with `feat/x\t`.
+- [x] **Re-creation prompt fires and aborts on N**: pre-seed the tombstone with `feat/x\t2026-01-01`. Run `git-push "msg" feat/x`, answer N at the new prompt (added before the existing flow). Output contains `cleaned up by gitbetter on 2026-01-01` and `Aborted.`; local branch `feat/x` was not created.
+- [x] **Re-creation prompt fires and proceeds on Y**: same seed, answer Y, then continue answering the existing prompts. Branch `feat/x` is created, and the tombstone no longer contains the `feat/x` entry afterwards.
+- [x] **No tombstone → no prompt**: fresh repo, no tombstone file. `git-push "msg" feat/x` does not mention "cleaned up" anywhere.
+- [x] **Switching to existing local branch → no check**: create `feat/x` locally first. `git-push "msg" feat/x` doesn't trigger the prompt even if a stale tombstone entry exists.
+
+**Docs:**
+
+- [x] Update `README.md` `git-push` section: brief paragraph on the resurrection guard.
+- [x] Update `CHANGELOG.md` under `[1.6.1]`: Added + Design notes.
+- [x] Update `docs/specs/features.md` FR-5 to document the tombstone + guard.
+- [x] Update `docs/specs/tech-spec.md` `git-push.sh` table.
+- [x] Bump `GITBETTER_VERSION` in `lib/ui.sh` to `1.6.1`.
+- [x] Update `tests/*.bats` version assertions `v1.6.0` → `v1.6.1`.
+
+**Verify:**
+
+- [x] `shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh` clean.
+- [x] `bats tests/` passes (66 tests: 61 prior + 5 new E.e tests).
+- [ ] Manual smoke: complete a `feat/x` cycle through cleanup; immediately re-run `git-push "msg" feat/x` and verify the prompt fires.
+
+**Out of scope (deferred to Future):**
+
+- **Reflog-based detection of non-gitbetter deletes**: catching `git branch -D` or GitHub auto-delete by grepping `git reflog show HEAD`. Broader coverage but fuzzier semantics (90-day expiry, can't distinguish delete-after-merge from rename-away). Tombstone catches the specific failure mode this story addresses; the reflog approach can be layered on later if real-world feedback calls for it.
+- **Tombstone TTL / pruning**: entries are append-only and never expire. Files in `.git/` are local-only so size is bounded by personal usage; not worth the complexity today.
+- **Cross-clone sharing**: tombstones don't sync across machines or clones. A second clone of the same repo would not see another clone's cleanup history. This is intentional — gitbetter state is per-checkout.
+
 ---
 
 ## Future

@@ -54,6 +54,8 @@ The default is **Roll back** when the remote rejects with a branch-protection er
 
 If the repo contains a `.project-guide.yml` marker at its root, `git-push` automatically excludes `docs/project-guide/` from every `git add -A` and prints a one-line note under the **Staging** banner explaining the exclusion. The marker is the [`project-guide`](https://github.com/pointmatic/project-guide) tool's own root-level config file; the directory it manages is operational/dev material that shouldn't be committed alongside source. Repos without the marker behave exactly as before.
 
+When the cleanup flow deletes a branch, `git-push` records a tombstone entry in `.git/gitbetter-deleted-branches`. If you later try to create a new branch with the same name (`git-push "msg" feat/x`), the script warns you and asks for confirmation — defaulting to abort — so you don't accidentally reuse the name of a retired branch and start it from a stale point.
+
 ### git-tag
 
 Validate a semver tag, show the latest tag for context, and push to origin.

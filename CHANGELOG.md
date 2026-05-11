@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] — 2026-05-11
+
+Branch-resurrection guard. When the cleanup flow deletes a branch, `git-push` now records a tombstone entry in `${GIT_DIR}/gitbetter-deleted-branches`. If you later run `git-push "msg" feat/x` and `feat/x` is in that file, the script warns and asks for confirmation before creating a new branch with the same name from current HEAD — protecting against accidental reuse of a retired branch name.
+
+### Added
+
+- `git-push`: cleanup flow now appends `<branch>\t<YYYY-MM-DD>` to `${GIT_DIR}/gitbetter-deleted-branches` after `git branch -D` succeeds.
+- `git-push`: pre-creation guard in the new-branch leg of the branch-switch step. When the requested branch is in the tombstone, prints a warning with the recorded date and prompts `ask_yn "Re-create <branch> from current HEAD?"` (default no → exit cleanly). Answering yes proceeds and removes every entry for that name from the tombstone, so subsequent intentional uses are silent.
+- Five new BATS tests in `tests/git-push.bats` covering: tombstone written on cleanup, prompt fires + N aborts without creating the branch, prompt fires + Y creates the branch and clears the entry (unrelated entries preserved), no tombstone → silent, tombstone hit but local branch already exists → no prompt (switch path).
+
+### Design notes
+
+- **Why a tombstone file, not a reflog scan.** A reflog scan (`git reflog show HEAD | grep`) would catch all deletions including manual `git branch -D`, but has fuzzy semantics — 90-day expiry, no way to distinguish delete-after-merge from rename-away. The tombstone is written exactly when gitbetter retired the branch, so the warning is precise: "this script deleted this branch on this date." Manual deletes and GitHub auto-delete are deliberately not flagged (their intent is too ambiguous to warn cleanly).
+- **Why local-only.** The tombstone lives in `${GIT_DIR}/` so it never enters the working tree, is never committed, and never syncs across clones. It's per-checkout bookkeeping. A new clone won't see another checkout's history and will skip the guard — that's an accepted tradeoff for keeping the mechanism purely local.
+- **Self-clearing on confirm.** Removing the entry once the user explicitly re-creates the branch means subsequent pushes to the same name are silent. A future cleanup writes a fresh tombstone, restoring the guard.
+- **`${GIT_DIR}` via `git rev-parse --git-dir`.** Works in plain repos, worktrees, and submodules where `.git` is a file rather than a directory.
+
 ## [1.6.0] — 2026-05-11
 
 `project-guide` integration. When a `.project-guide.yml` marker file exists at the repo root, `git-push` now excludes `docs/project-guide/` from every `git add -A` via a Git pathspec, so the operational/dev artifacts managed by [`project-guide`](https://github.com/pointmatic/project-guide) don't accidentally land in source commits. Repos without the marker file are completely unaffected.

@@ -39,7 +39,7 @@ teardown() {
 @test "git-push: --version prints version and homepage, exits 0" {
     run "${GIT_PUSH_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-push v1.6.0"* ]]
+    [[ "${output}" == *"gitbetter git-push v1.6.1"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 
@@ -364,4 +364,91 @@ teardown() {
     # Branch gone
     run git branch --list feat/z
     [ -z "${output}" ]
+}
+
+# ── Cleanup tombstone + resurrection guard (E.e) ────────────
+
+@test "git-push: cleanup writes tombstone entry for deleted branch" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    echo "work" > work.txt
+    # Push + cleanup-yes on feat/tomb-w
+    run bash -c "printf 'y\ny\ny\ny\n' | '${GIT_PUSH_SH}' 'wip' feat/tomb-w"
+    [ "${status}" -eq 0 ]
+    TOMB="$(git rev-parse --git-dir)/gitbetter-deleted-branches"
+    [ -f "${TOMB}" ]
+    run cat "${TOMB}"
+    [[ "${output}" == "feat/tomb-w"$'\t'* ]]
+}
+
+@test "git-push: tombstoned branch name triggers prompt; N aborts and skips creation" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    # Seed the tombstone directly (no cleanup needed for this test).
+    TOMB="$(git rev-parse --git-dir)/gitbetter-deleted-branches"
+    printf 'feat/old\t2026-01-01\n' > "${TOMB}"
+    echo "work" > work.txt
+    # Prompts in order: last-commit confirm (y), resurrection guard (n → abort).
+    run bash -c "printf 'y\nn\n' | '${GIT_PUSH_SH}' 'msg' feat/old"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"cleaned up by gitbetter on"* ]]
+    [[ "${output}" == *"2026-01-01"* ]]
+    [[ "${output}" == *"Aborted."* ]]
+    # Branch was NOT created.
+    run git branch --list feat/old
+    [ -z "${output}" ]
+    # Tombstone entry still present (we didn't confirm).
+    run cat "${TOMB}"
+    [[ "${output}" == *"feat/old"* ]]
+}
+
+@test "git-push: tombstoned branch + Y at guard → branch created, tombstone cleared" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    TOMB="$(git rev-parse --git-dir)/gitbetter-deleted-branches"
+    printf 'feat/old\t2026-01-01\nfeat/other\t2026-02-02\n' > "${TOMB}"
+    echo "work" > work.txt
+    # 5 prompts: resurrection (y), last-commit (y), stage (y), commit (y), cleanup (n via Enter)
+    run bash -c "printf 'y\ny\ny\ny\n\n' | '${GIT_PUSH_SH}' 'msg' feat/old"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"cleaned up by gitbetter on"* ]]
+    [[ "${output}" == *"2026-01-01"* ]]
+    # Branch created
+    run git branch --list feat/old
+    [[ "${output}" == *"feat/old"* ]]
+    # Tombstone no longer mentions feat/old, but unrelated entry survives
+    run cat "${TOMB}"
+    [[ "${output}" != *"feat/old"* ]]
+    [[ "${output}" == *"feat/other"* ]]
+}
+
+@test "git-push: no tombstone file → new branch creation is silent (no guard)" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    echo "work" > work.txt
+    # No tombstone. Stop at first stage confirm to keep test short.
+    run bash -c "printf 'y\nn\n' | '${GIT_PUSH_SH}' 'msg' feat/fresh"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" != *"cleaned up by gitbetter"* ]]
+}
+
+@test "git-push: tombstone hit but branch already exists locally → no guard" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    git switch -q -c feat/exists
+    git switch -q main
+    # Seed a (stale) tombstone for a branch that exists locally
+    TOMB="$(git rev-parse --git-dir)/gitbetter-deleted-branches"
+    printf 'feat/exists\t2026-01-01\n' > "${TOMB}"
+    echo "work" > work.txt
+    # Stop at first stage confirm; the guard should NOT have fired.
+    run bash -c "printf 'y\nn\n' | '${GIT_PUSH_SH}' 'msg' feat/exists"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" != *"cleaned up by gitbetter"* ]]
+    [[ "${output}" == *"exists — switching"* ]]
 }

@@ -102,6 +102,35 @@ if [[ -n "${REPO_ROOT_PATH}" && -f "${REPO_ROOT_PATH}/.project-guide.yml" ]]; th
     GIT_ADD_PATHSPEC=(-- ':/' ':(exclude,top)docs/project-guide')
 fi
 
+# ── Cleanup-Tombstone Path ──────────────────────────────────
+# Branches deleted by gitbetter's cleanup flow get an entry here so
+# we can warn before re-creating a branch with the same name later.
+TOMBSTONE_FILE=""
+GIT_DIR_PATH="$(git rev-parse --git-dir 2>/dev/null || true)"
+if [[ -n "${GIT_DIR_PATH}" ]]; then
+    TOMBSTONE_FILE="${GIT_DIR_PATH}/gitbetter-deleted-branches"
+fi
+
+# Echo the most recent tombstone date for $1, or empty if not present.
+# Format per line: "<branch>\t<YYYY-MM-DD>".
+tombstone_lookup() {
+    local branch="$1"
+    [[ -z "${TOMBSTONE_FILE}" || ! -f "${TOMBSTONE_FILE}" ]] && return 0
+    awk -F '\t' -v b="${branch}" '$1 == b { d = $2 } END { if (d) print d }' \
+        "${TOMBSTONE_FILE}"
+}
+
+# Strip every entry for $1 from the tombstone (a successful re-create
+# clears past entries; a future cleanup writes a fresh one).
+tombstone_remove() {
+    local branch="$1"
+    [[ -z "${TOMBSTONE_FILE}" || ! -f "${TOMBSTONE_FILE}" ]] && return 0
+    local tmp
+    tmp="$(mktemp -t gitbetter-tomb.XXXXXX)"
+    awk -F '\t' -v b="${branch}" '$1 != b' "${TOMBSTONE_FILE}" > "${tmp}"
+    mv "${tmp}" "${TOMBSTONE_FILE}"
+}
+
 # ── Summary Banner ─────────────────────────────────────
 echo ""
 header_box "git-push"
@@ -143,6 +172,18 @@ if [[ -n "${BRANCH_NAME}" && "${CURRENT_BRANCH}" != "${BRANCH_NAME}" ]]; then
         info "Local branch ${M}${BRANCH_NAME}${RESET} exists — switching."
         run_cmd git switch "${BRANCH_NAME}"
     else
+        TOMB_DATE="$(tombstone_lookup "${BRANCH_NAME}")"
+        if [[ -n "${TOMB_DATE}" ]]; then
+            echo ""
+            warn "Branch ${M}${BRANCH_NAME}${RESET} was cleaned up by gitbetter on ${Y}${TOMB_DATE}${RESET}."
+            info "Re-creating it from current HEAD produces a new branch reusing a retired name."
+            info "If you meant to start fresh work, consider a different name."
+            if ! ask_yn "Re-create ${BRANCH_NAME} from current HEAD?"; then
+                echo -e "\n  ${DIM}Aborted.${RESET}\n"
+                exit 0
+            fi
+            tombstone_remove "${BRANCH_NAME}"
+        fi
         info "Creating new branch ${M}${BRANCH_NAME}${RESET}."
         run_cmd git switch -c "${BRANCH_NAME}"
     fi
@@ -357,6 +398,10 @@ if [[ "${CURRENT_BRANCH}" != "main" ]]; then
         run_cmd git fetch --prune
         run_cmd git pull --ff-only
         run_cmd git branch -D "${CURRENT_BRANCH}"
+        if [[ -n "${TOMBSTONE_FILE}" ]]; then
+            printf '%s\t%s\n' "${CURRENT_BRANCH}" "$(date -u +%Y-%m-%d)" \
+                >> "${TOMBSTONE_FILE}"
+        fi
         echo ""
         success "Branch ${M}${CURRENT_BRANCH}${RESET} deleted. You're on ${M}main${RESET} with latest."
     else
