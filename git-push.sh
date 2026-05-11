@@ -85,6 +85,23 @@ COMMIT_MSG="${COMMIT_MSG//\"/\'}"
 
 BRANCH_NAME="${POSITIONAL[1]:-}"
 
+# ── Project-Guide Exclusion Detection ───────────────────────
+# When .project-guide.yml exists at the repo root, treat
+# docs/project-guide/ as operational/dev artifacts and exclude it
+# from every `git add -A` in this script via a pathspec. The marker
+# gates the behavior so unrelated repos with a docs/project-guide
+# directory are unaffected.
+REPO_ROOT_PATH="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+PROJECT_GUIDE=false
+# Always seed with `--` so the array is non-empty under set -u on Bash
+# 4.0–4.3 (empty-array expansion was made safe only in 4.4). `git add
+# -A --` with no following pathspec is equivalent to bare `git add -A`.
+GIT_ADD_PATHSPEC=(--)
+if [[ -n "${REPO_ROOT_PATH}" && -f "${REPO_ROOT_PATH}/.project-guide.yml" ]]; then
+    PROJECT_GUIDE=true
+    GIT_ADD_PATHSPEC=(-- ':/' ':(exclude,top)docs/project-guide')
+fi
+
 # ── Summary Banner ─────────────────────────────────────
 echo ""
 header_box "git-push"
@@ -185,7 +202,10 @@ confirm "Stage all changes"
 
 # ── Step 4 · Stage ───────────────────────────────────────────
 banner "Staging"
-run_cmd git add -A
+if ${PROJECT_GUIDE}; then
+    info "Excluding ${M}docs/project-guide${RESET} ${DIM}(project-guide artifacts; .project-guide.yml detected)${RESET}"
+fi
+run_cmd git add -A "${GIT_ADD_PATHSPEC[@]}"
 echo ""
 run_cmd git status --short
 echo ""
@@ -218,7 +238,7 @@ if [[ -n "${DIRTY}" ]]; then
     echo -e "${DIM}${DIRTY}${RESET}"
     echo ""
     if ask_yn "Fold these changes into the commit via --amend?"; then
-        run_cmd git add -A
+        run_cmd git add -A "${GIT_ADD_PATHSPEC[@]}"
         run_cmd git commit --amend --no-edit
         success "Folded into commit."
         # Force amend mode so the push step uses --force-with-lease

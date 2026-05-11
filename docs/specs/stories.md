@@ -510,6 +510,73 @@ Add a `--prefix <name>` flag to `git-tag` that prepends a label to the semver ta
 - **Multi-prefix queries**: showing the latest tag across *all* prefixes in one run. Would require iterating prefix families; better as a separate `gitbetter tags` summary command.
 - **`@scope/pkg`-style prefixes**: slashes are not allowed in the prefix because Git tag names allow slashes but they create visual confusion and tooling edge cases. Deferred.
 
+### Story E.d: v1.6.0 'docs/project-guide' pathspec exclusion [Done]
+
+Exclude `docs/project-guide` from `git add` when the project uses the [`project-guide`](https://github.com/pointmatic/project-guide) tooling. `project-guide` materializes a `docs/project-guide/` directory of operational/development artifacts (modes, templates, etc.) that are useful locally but don't belong in the codebase's commit history. Detect by checking for `.project-guide.yml` at the repo root, then thread a Git pathspec exclusion through every `git add -A` in `git-push.sh`. The marker check avoids collateral damage in any unrelated repo that happens to have a directory named `docs/project-guide`.
+
+**Design principles:**
+
+- **Marker-gated**: only activates when `${REPO_ROOT}/.project-guide.yml` exists. Repos without the marker behave exactly as today.
+- **Repo-root anchored**: the marker is probed via `git rev-parse --show-toplevel`, not `pwd`, so the behavior is identical regardless of which subdirectory the user runs `git-push` from.
+- **Pathspec-based, not `.gitignore`-based**: `.gitignore` would forbid commits across *all* git tooling and would surprise users who do `git add docs/project-guide/somefile.md` deliberately. A pathspec on `git add -A` is local to `git-push` and reversible (the user can still commit manually if needed).
+- **Transparent**: a one-line `info` message under the Staging banner names the exclusion and explains why, so the behavior is never invisible.
+- **Both `git add -A` sites covered**: the staging step and the post-commit dirty-tree amend both use the exclusion. A pre-commit hook reformatting a `docs/project-guide` file should not sneak it into the amended commit.
+
+**`git-push.sh` — exclusion plumbing:**
+
+- [x] Detect the marker after argument parsing, before the summary banner:
+  ```bash
+  REPO_ROOT_PATH="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  PROJECT_GUIDE=false
+  if [[ -n "${REPO_ROOT_PATH}" && -f "${REPO_ROOT_PATH}/.project-guide.yml" ]]; then
+      PROJECT_GUIDE=true
+  fi
+  GIT_ADD_PATHSPEC=()
+  if ${PROJECT_GUIDE}; then
+      GIT_ADD_PATHSPEC=(-- ':/' ':(exclude,top)docs/project-guide')
+  fi
+  ```
+- [x] Replace both `run_cmd git add -A` invocations with `run_cmd git add -A "${GIT_ADD_PATHSPEC[@]}"`. When the array is empty, Bash expands it to nothing under `set -u` only because we use the `"${arr[@]}"` form (safe on Bash 4.0+).
+- [x] Under the **Staging** banner (before the first `git add -A`), when `${PROJECT_GUIDE}` is true, emit:
+  ```
+  info "Excluding ${M}docs/project-guide${RESET} ${DIM}(project-guide artifacts; .project-guide.yml detected)${RESET}"
+  ```
+
+**Why the `:/` positive pathspec:** Git requires at least one positive pathspec; `:(exclude,top)`-only pathspecs match nothing. `:/` means "from the working-tree root" — equivalent to the cwd-independent semantics of bare `git add -A`. Using `.` instead would limit staging to the current directory, breaking the case where the user runs `git-push` from a subdirectory.
+
+**Why `,top` on the exclude:** Without `top`, exclusion pathspecs are interpreted relative to cwd, so running `git-push` from `src/` would attempt to exclude `src/docs/project-guide` (which doesn't exist) and the real `docs/project-guide` would still be staged. `:(exclude,top)docs/project-guide` anchors the exclusion to the working-tree root, matching the positive `:/` pathspec.
+
+**`git-tag.sh` and `gitbetter.sh`:**
+
+- No changes. Neither script invokes `git add`.
+
+**Tests (`tests/git-push.bats`):**
+
+- [x] **Exclusion active**: with `.project-guide.yml` present and a tracked file under `docs/project-guide/foo.md`, run `git-push` and verify the committed tree does **not** contain `docs/project-guide/foo.md`, the banner message names the exclusion, and other modified files (e.g. `README.md`) are committed normally.
+- [x] **No marker → no exclusion**: with no `.project-guide.yml`, create the same `docs/project-guide/foo.md` file and verify it **is** committed (existing behavior preserved). Banner should not mention the exclusion.
+- [x] **Run from subdirectory**: with the marker present, run `git-push` from a subdirectory of the repo and verify `docs/project-guide` content is still excluded (validates `:/` anchoring and `git rev-parse --show-toplevel` detection).
+
+**Docs:**
+
+- [x] Update `README.md` `git-push` section: short paragraph mentioning the `.project-guide.yml` integration.
+- [x] Update `CHANGELOG.md` under `[1.6.0]`: Added / Design notes sections.
+- [x] Update `docs/specs/features.md` FR-2 step 8 to note the conditional pathspec, and add an FR-2 edge case.
+- [x] Update `docs/specs/tech-spec.md` `git-push.sh` table with the marker + pathspec details.
+- [x] Bump `GITBETTER_VERSION` in `lib/ui.sh` to `1.6.0`.
+- [x] Update `tests/*.bats` version assertions from `v1.5.0` → `v1.6.0`.
+
+**Verify:**
+
+- [x] `shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh` clean.
+- [x] `bats tests/` passes (61 tests: 58 prior + 3 new E.d tests).
+- [ ] Manual smoke in this very repo: a modification to `docs/project-guide/...` is silently dropped by `git-push`; the Staging banner names the exclusion.
+
+**Out of scope (deferred to Future):**
+
+- **Configurable exclusion paths**: a `.project-guide.yml` key like `gitbetter.exclude:` listing extra paths. Today the path is hard-coded to `docs/project-guide`, matching project-guide's own conventions.
+- **`git-tag` integration**: tags don't stage paths, so there is nothing to exclude. No-op by design.
+- **`.gitignore` cooperation**: deliberately avoided — `.gitignore` would block ALL git tooling, including the user's manual `git add`. The pathspec approach is intentionally `git-push`-local.
+
 ---
 
 ## Future

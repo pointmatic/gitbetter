@@ -39,7 +39,7 @@ teardown() {
 @test "git-push: --version prints version and homepage, exits 0" {
     run "${GIT_PUSH_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-push v1.5.0"* ]]
+    [[ "${output}" == *"gitbetter git-push v1.6.0"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 
@@ -285,6 +285,67 @@ teardown() {
     [[ "${output}" != *"1) Retry"* ]]
     [[ "${output}" != *"What now?"* ]]
     [[ "${output}" == *"Force-push failed"* ]]
+}
+
+# ── Project-Guide pathspec exclusion (E.d) ──────────────────
+
+@test "git-push: .project-guide.yml present → docs/project-guide excluded from commit" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    # Marker + a file under the excluded dir + an unrelated change.
+    : > .project-guide.yml
+    mkdir -p docs/project-guide
+    echo "internal artifact" > docs/project-guide/foo.md
+    echo "keep me" > keep.txt
+    # 3 prompts: last-commit (y), stage (y), commit (y). On main with no
+    # remote rejection the push succeeds and we skip the branch-workflow
+    # section entirely.
+    run bash -c "printf 'y\ny\ny\n' | '${GIT_PUSH_SH}' 'feat: thing'"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Excluding"* ]]
+    [[ "${output}" == *"docs/project-guide"* ]]
+    [[ "${output}" == *".project-guide.yml detected"* ]]
+    # Committed tree contains keep.txt + .project-guide.yml, NOT docs/project-guide/foo.md.
+    run git ls-tree -r --name-only HEAD
+    [[ "${output}" == *"keep.txt"* ]]
+    [[ "${output}" == *".project-guide.yml"* ]]
+    [[ "${output}" != *"docs/project-guide/foo.md"* ]]
+    # File is still on disk, just not staged/committed.
+    [ -f docs/project-guide/foo.md ]
+}
+
+@test "git-push: no .project-guide.yml → docs/project-guide IS committed (existing behavior)" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    # No marker file — same directory should be staged normally.
+    mkdir -p docs/project-guide
+    echo "artifact" > docs/project-guide/foo.md
+    run bash -c "printf 'y\ny\ny\n' | '${GIT_PUSH_SH}' 'feat: thing'"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" != *"Excluding"* ]]
+    run git ls-tree -r --name-only HEAD
+    [[ "${output}" == *"docs/project-guide/foo.md"* ]]
+}
+
+@test "git-push: exclusion works when run from a subdirectory" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    : > .project-guide.yml
+    mkdir -p docs/project-guide src
+    echo "internal" > docs/project-guide/foo.md
+    echo "real code" > src/app.txt
+    # Run git-push from src/ — marker detection must use repo root, not cwd.
+    cd src
+    run bash -c "printf 'y\ny\ny\n' | '${GIT_PUSH_SH}' 'feat: subdir push'"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"Excluding"* ]]
+    cd ..
+    run git ls-tree -r --name-only HEAD
+    [[ "${output}" == *"src/app.txt"* ]]
+    [[ "${output}" != *"docs/project-guide/foo.md"* ]]
 }
 
 @test "git-push: on non-main branch, answer y at cleanup → switch main, delete branch" {

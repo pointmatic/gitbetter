@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-05-11
+
+`project-guide` integration. When a `.project-guide.yml` marker file exists at the repo root, `git-push` now excludes `docs/project-guide/` from every `git add -A` via a Git pathspec, so the operational/dev artifacts managed by [`project-guide`](https://github.com/pointmatic/project-guide) don't accidentally land in source commits. Repos without the marker file are completely unaffected.
+
+### Added
+
+- `git-push`: marker-gated pathspec exclusion. Detects `${REPO_ROOT}/.project-guide.yml` via `git rev-parse --show-toplevel` (cwd-independent). When present, every `git add -A` becomes `git add -A -- :/ ':(exclude,top)docs/project-guide'`, and the **Staging** banner shows a one-line `info` naming the exclusion so it's never invisible.
+- Both `git add -A` invocations in `git-push.sh` are covered — the main staging step and the post-commit dirty-tree amend fold-in — so a pre-commit hook reformatting a `docs/project-guide` file can't sneak it into the amended commit.
+- Three new BATS tests in `tests/git-push.bats` covering: marker present → directory excluded with banner note; marker absent → directory committed normally (existing behavior); marker present + running from a subdirectory → exclusion still anchored to the repo root.
+
+### Design notes
+
+- **Why marker-gated and not unconditional.** A bare exclusion of `docs/project-guide` would surprise any unrelated repo that happens to use that path. The `.project-guide.yml` file is project-guide's own root-level config, so its presence is a precise signal that the repo opts into the convention.
+- **Why a pathspec on `git add`, not `.gitignore`.** `.gitignore` would forbid the path across *all* git tooling, including the user's deliberate `git add docs/project-guide/something.md`. A pathspec on `git-push`'s own `git add -A` is local to this command and reversible — the user can still commit a file under that directory by running `git add` manually.
+- **Why `:/` + `:(exclude,top)`.** Git requires at least one positive pathspec; an exclude-only pathspec matches nothing. `:/` anchors the positive match at the working-tree root, mirroring the cwd-independent semantics of bare `git add -A`. The `top` magic on the exclude is essential: without it, pathspecs are interpreted relative to cwd, so running `git-push` from a subdirectory would leave the real `docs/project-guide` un-excluded.
+- **`git-tag` and `gitbetter` unchanged.** Neither invokes `git add`, so there's nothing to filter. The exclusion is `git-push`-local by design.
+
 ## [1.5.0] — 2026-05-04
 
 `git-tag --prefix` release. Adds a `--prefix NAME` flag to `git-tag` for monorepos and multi-artifact projects where multiple independently-versioned components share a single repository. `git-tag v2.1.1 --prefix npm` creates and pushes `npm-v2.1.1`; all existing no-prefix behavior is unchanged.

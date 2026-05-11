@@ -37,7 +37,7 @@ teardown() {
 @test "git-tag: --version prints version and homepage, exits 0" {
     run "${GIT_TAG_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-tag v1.5.0"* ]]
+    [[ "${output}" == *"gitbetter git-tag v1.6.0"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 

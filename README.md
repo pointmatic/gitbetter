@@ -52,6 +52,8 @@ If the push is rejected, `git-push` offers three explicit recovery options:
 
 The default is **Roll back** when the remote rejects with a branch-protection error (e.g. `GH006`) or when you're pushing to `main` without a `branch_name`; otherwise the default is **Abort**. Amend mode (`--amend`) bypasses the menu and auto-uses `--force-with-lease`.
 
+If the repo contains a `.project-guide.yml` marker at its root, `git-push` automatically excludes `docs/project-guide/` from every `git add -A` and prints a one-line note under the **Staging** banner explaining the exclusion. The marker is the [`project-guide`](https://github.com/pointmatic/project-guide) tool's own root-level config file; the directory it manages is operational/dev material that shouldn't be committed alongside source. Repos without the marker behave exactly as before.
+
 ### git-tag
 
 Validate a semver tag, show the latest tag for context, and push to origin.

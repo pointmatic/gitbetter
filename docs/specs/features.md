@@ -141,7 +141,7 @@ Stage all changes, commit, and push to the current branch in one interactive com
 5. Show the last commit for context.
 6. Confirm with the user before proceeding.
 7. Show `git status --short` and confirm staging.
-8. Run `git add -A`, show updated status, and confirm commit.
+8. Run `git add -A`, show updated status, and confirm commit. When `.project-guide.yml` exists at the repo root, the staging step transparently excludes `docs/project-guide/` via a Git pathspec (`:/ :(exclude,top)docs/project-guide`) and prints a one-line note naming the exclusion. The same exclusion applies to the pre-commit hook fold-in amend (see FR-4).
 9. Run `git commit -m "message"` and report success.
 10. Push to `origin/<current_branch>` and report success.
 
@@ -150,6 +150,7 @@ Stage all changes, commit, and push to the current branch in one interactive com
 - Empty commit message after sanitization → fail with descriptive error.
 - Nothing to commit (clean tree) → commit fails; report "nothing to commit" and exit.
 - Push rejected by remote → offer `--force-with-lease` retry (see FR-4).
+- `.project-guide.yml` present but no changes outside `docs/project-guide/` → the exclusion may leave nothing staged; the commit step fails cleanly with "nothing to commit".
 
 ### FR-3: git-push — Amend Mode
 

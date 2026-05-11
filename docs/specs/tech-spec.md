@@ -194,6 +194,7 @@ Already implemented. See `features.md` FR-2 through FR-5 for behavior. Key imple
 | **Push retry** | On push failure, `ask_yn` to retry with `--force-with-lease` |
 | **GitHub Actions URL** | Regex on `git remote get-url origin` to extract `github.com/<owner>/<repo>` |
 | **Browser open** | `open` (macOS) or `xdg-open` (Linux) with fallback |
+| **project-guide exclusion** | `git rev-parse --show-toplevel` → check for `.project-guide.yml`; if present, both `git add -A` calls get pathspec args `-- :/ :(exclude,top)docs/project-guide`. Marker-gated and `git-push`-local (no `.gitignore` changes). Staging banner emits a one-line `info` naming the exclusion. |
 
 ### git-tag.sh
 

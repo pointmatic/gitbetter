@@ -28,6 +28,8 @@ build/
 .vscode/settings.json
 
 # project-guide
+docs/project-guide/**
+!docs/project-guide/go.md
 docs/project-guide/**/*.bak.*
 
 # BATS helper libs (cloned in CI; not checked in)
