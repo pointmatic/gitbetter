@@ -171,16 +171,17 @@ Replace the last commit and force-push safely.
 Detect and offer to fold in changes left by pre-commit hooks.
 
 **Behavior:**
-1. After a successful commit, check `git status --porcelain`.
+1. After a successful commit, check `git status --porcelain` with the same pathspec used by staging — so when `.project-guide.yml` is present, `docs/project-guide/` changes are filtered out and do not register as dirty.
 2. If the working tree is dirty, warn the user that pre-commit hooks likely reformatted files.
 3. Show the dirty files.
-4. Offer (default no) to fold the changes into the commit via `git add -A && git commit --amend --no-edit`.
+4. Offer (default no) to fold the changes into the commit via `git add -A && git commit --amend --no-edit` (using the same exclusion pathspec).
 5. If the user accepts, switch to force-push mode (`--force-with-lease`) for the push step.
 6. If the user declines, proceed with the push as normal; dirty files remain uncommitted.
 
 **Edge Cases:**
 - Dirty tree is from unrelated files, not hooks → user declines the fold; no harm done.
 - Multiple rounds of hook reformatting → only one fold pass is offered.
+- Marker present + only `docs/project-guide/` changes outside the commit → probe sees a clean tree and skips the warning entirely.
 
 ### FR-5: git-push — Branch-PR Workflow and Cleanup
 

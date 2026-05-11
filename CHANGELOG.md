@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.2] — 2026-05-11
+
+Bug-fix patch for v1.6.0.
+
+### Fixed
+
+- `git-push`: post-commit dirty-tree probe (Step 5.5) no longer reports `docs/project-guide/` changes as "still dirty after commit" in repos with a `.project-guide.yml` marker. The probe now threads the same `GIT_ADD_PATHSPEC` exclusion array through `git status --porcelain`, so the dirty-tree check sees the same filtered view as the `git add -A` staging step. Previously, project-guide artifacts (deliberately excluded from staging) would trip the "likely a pre-commit hook reformat" warning and trigger the spurious `Fold these changes into the commit via --amend?` prompt. Repos without the marker degrade to `git status --porcelain --`, which is semantically identical to the bare call.
+
 ## [1.6.1] — 2026-05-11
 
 Branch-resurrection guard. When the cleanup flow deletes a branch, `git-push` now records a tombstone entry in `${GIT_DIR}/gitbetter-deleted-branches`. If you later run `git-push "msg" feat/x` and `feat/x` is in that file, the script warns and asks for confirmation before creating a new branch with the same name from current HEAD — protecting against accidental reuse of a retired branch name.

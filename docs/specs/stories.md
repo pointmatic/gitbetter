@@ -654,6 +654,30 @@ Prevent accidental "branch resurrection" — the failure mode where a user runs 
 - **Tombstone TTL / pruning**: entries are append-only and never expire. Files in `.git/` are local-only so size is bounded by personal usage; not worth the complexity today.
 - **Cross-clone sharing**: tombstones don't sync across machines or clones. A second clone of the same repo would not see another clone's cleanup history. This is intentional — gitbetter state is per-checkout.
 
+### Story E.f: v1.6.2 Dirty-tree check honors project-guide exclusion [Done]
+
+Bug fix on top of v1.6.0. After committing in a `.project-guide.yml`-marked repo, the post-commit dirty-tree probe (Step 5.5) was reporting `docs/project-guide/` changes as "still dirty after commit" and offering to fold them into the commit via `--amend` — exactly the files we deliberately excluded from `git add`. The probe used `git status --porcelain` with no pathspec, so it saw the full working tree and didn't know about the exclusion. Fix: thread the existing `GIT_ADD_PATHSPEC` array through the porcelain call so the dirty-tree check sees the same filtered view as the staging step.
+
+**`git-push.sh`:**
+
+- [x] Change `DIRTY="$(git status --porcelain)"` to `DIRTY="$(git status --porcelain "${GIT_ADD_PATHSPEC[@]}")"`. When the marker is absent, `GIT_ADD_PATHSPEC=(--)` so the call degrades to `git status --porcelain --`, semantically identical to bare. When the marker is present, the exclusion applies and `docs/project-guide` changes are invisible to the probe.
+
+**Tests (`tests/git-push.bats`):**
+
+- [x] New: with marker + a real change + a `docs/project-guide/foo.md` change, full commit flow doesn't print "still dirty after commit" and doesn't show the fold-into-commit prompt.
+
+**Docs:**
+
+- [x] Update `CHANGELOG.md` under `[1.6.2]`: Fixed section.
+- [x] Bump `GITBETTER_VERSION` in `lib/ui.sh` to `1.6.2`.
+- [x] Update `tests/*.bats` version assertions `v1.6.1` → `v1.6.2`.
+
+**Verify:**
+
+- [x] `shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh` clean.
+- [x] `bats tests/` passes (67 tests: 66 prior + 1 new E.f regression test).
+- [ ] Manual smoke in this very repo: modify a file in `docs/project-guide/` plus a real source file, run `git-push`, confirm no dirty-tree warning.
+
 ---
 
 ## Future

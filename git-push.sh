@@ -270,7 +270,10 @@ else
 fi
 
 # ── Step 5.5 · Post-Commit Dirty-Tree Check ─────────────────
-DIRTY="$(git status --porcelain)"
+# Reuse the staging pathspec so docs/project-guide isn't reported as
+# dirty when the marker file is present — it was deliberately excluded
+# from `git add`, so seeing it here is expected, not a hook reformat.
+DIRTY="$(git status --porcelain "${GIT_ADD_PATHSPEC[@]}")"
 if [[ -n "${DIRTY}" ]]; then
     echo ""
     warn "Working tree is ${Y}still dirty${RESET} after commit."

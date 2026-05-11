@@ -194,7 +194,7 @@ Already implemented. See `features.md` FR-2 through FR-5 for behavior. Key imple
 | **Push retry** | On push failure, `ask_yn` to retry with `--force-with-lease` |
 | **GitHub Actions URL** | Regex on `git remote get-url origin` to extract `github.com/<owner>/<repo>` |
 | **Browser open** | `open` (macOS) or `xdg-open` (Linux) with fallback |
-| **project-guide exclusion** | `git rev-parse --show-toplevel` → check for `.project-guide.yml`; if present, both `git add -A` calls get pathspec args `-- :/ :(exclude,top)docs/project-guide`. Marker-gated and `git-push`-local (no `.gitignore` changes). Staging banner emits a one-line `info` naming the exclusion. |
+| **project-guide exclusion** | `git rev-parse --show-toplevel` → check for `.project-guide.yml`; if present, both `git add -A` calls AND the post-commit `git status --porcelain` probe get pathspec args `-- :/ :(exclude,top)docs/project-guide`. Marker-gated and `git-push`-local (no `.gitignore` changes). Staging banner emits a one-line `info` naming the exclusion. The same pathspec on the porcelain probe ensures excluded files don't trip the "still dirty after commit" warning. |
 | **Cleanup tombstone** | Path: `$(git rev-parse --git-dir)/gitbetter-deleted-branches`. Format: tab-separated `<branch>\t<YYYY-MM-DD>`, one per line, append-only. Written after `git branch -D` in the cleanup flow. Local-only (never committed, never synced). |
 | **Resurrection guard** | In the new-branch leg of the branch-switch step, `awk` looks up the requested name in the tombstone. If present, `ask_yn` (default no) gates `git switch -c`. Yes → `awk` strips every entry for that name from the file, then the branch is created. Existing local branches bypass the check entirely. |
 

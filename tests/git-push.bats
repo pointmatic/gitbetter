@@ -39,7 +39,7 @@ teardown() {
 @test "git-push: --version prints version and homepage, exits 0" {
     run "${GIT_PUSH_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-push v1.6.1"* ]]
+    [[ "${output}" == *"gitbetter git-push v1.6.2"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 
@@ -327,6 +327,20 @@ teardown() {
     [[ "${output}" != *"Excluding"* ]]
     run git ls-tree -r --name-only HEAD
     [[ "${output}" == *"docs/project-guide/foo.md"* ]]
+}
+
+@test "git-push: project-guide changes do NOT trigger post-commit dirty-tree warning" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    : > .project-guide.yml
+    mkdir -p docs/project-guide
+    echo "internal artifact" > docs/project-guide/foo.md
+    echo "real change" > work.txt
+    run bash -c "printf 'y\ny\ny\n' | '${GIT_PUSH_SH}' 'feat: thing'"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" != *"still dirty after commit"* ]]
+    [[ "${output}" != *"Fold these changes into the commit"* ]]
 }
 
 @test "git-push: exclusion works when run from a subdirectory" {
