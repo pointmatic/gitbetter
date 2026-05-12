@@ -39,7 +39,7 @@ teardown() {
 @test "git-push: --version prints version and homepage, exits 0" {
     run "${GIT_PUSH_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-push v1.6.2"* ]]
+    [[ "${output}" == *"gitbetter git-push v1.6.3"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 
@@ -327,6 +327,27 @@ teardown() {
     [[ "${output}" != *"Excluding"* ]]
     run git ls-tree -r --name-only HEAD
     [[ "${output}" == *"docs/project-guide/foo.md"* ]]
+}
+
+@test "git-push: status --short displays hide docs/project-guide entries when marker is present" {
+    setup_bare_remote
+    echo "remote.git/" > .gitignore && git add -A && git commit -q -m "ignore bare"
+    git push -q -u origin main
+    : > .project-guide.yml
+    mkdir -p docs/project-guide
+    echo "internal artifact" > docs/project-guide/foo.md
+    echo "real change" > work.txt
+    # Abort at the stage prompt so we exercise the Working Tree status display
+    # without running the full commit flow.
+    run bash -c "printf 'y\nn\n' | '${GIT_PUSH_SH}' 'msg'"
+    [ "${status}" -eq 0 ]
+    # Neither porcelain shape (untracked '?? ' or modified ' M') for the
+    # excluded path should appear in the output.
+    [[ "${output}" != *"?? docs/project-guide"* ]]
+    [[ "${output}" != *" M docs/project-guide"* ]]
+    [[ "${output}" != *"M  docs/project-guide"* ]]
+    # The unrelated real change must still be shown.
+    [[ "${output}" == *"work.txt"* ]]
 }
 
 @test "git-push: project-guide changes do NOT trigger post-commit dirty-tree warning" {

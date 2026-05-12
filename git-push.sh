@@ -235,20 +235,20 @@ fi
 
 # ── Step 3 · Review Working Tree ────────────────────────────
 banner "Working Tree"
+if ${PROJECT_GUIDE}; then
+    info "Excluding ${M}docs/project-guide${RESET} ${DIM}(project-guide artifacts; .project-guide.yml detected)${RESET}"
+fi
 echo ""
-run_cmd git status --short
+run_cmd git status --short "${GIT_ADD_PATHSPEC[@]}"
 echo ""
 
 confirm "Stage all changes"
 
 # ── Step 4 · Stage ───────────────────────────────────────────
 banner "Staging"
-if ${PROJECT_GUIDE}; then
-    info "Excluding ${M}docs/project-guide${RESET} ${DIM}(project-guide artifacts; .project-guide.yml detected)${RESET}"
-fi
 run_cmd git add -A "${GIT_ADD_PATHSPEC[@]}"
 echo ""
-run_cmd git status --short
+run_cmd git status --short "${GIT_ADD_PATHSPEC[@]}"
 echo ""
 
 confirm "Commit these changes"

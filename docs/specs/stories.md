@@ -678,6 +678,40 @@ Bug fix on top of v1.6.0. After committing in a `.project-guide.yml`-marked repo
 - [x] `bats tests/` passes (67 tests: 66 prior + 1 new E.f regression test).
 - [ ] Manual smoke in this very repo: modify a file in `docs/project-guide/` plus a real source file, run `git-push`, confirm no dirty-tree warning.
 
+### Story E.g: v1.6.3 Status displays honor project-guide exclusion [Done]
+
+Second-round bug fix on the v1.6.0 feature. The "Working Tree" review (Step 3) and post-staging summary (Step 4) both run `git status --short` with no pathspec, so users in a `.project-guide.yml`-marked repo still see `?? docs/project-guide/` (or modified-state equivalents) in those displays — confusing in light of the "Excluding" info message. The user reported this with a real session: `git-push` ran cleanly and pushed the right files, but `git status` afterwards still showed the untracked `docs/project-guide/` tree, and the in-script status output included it too.
+
+Same fix pattern as E.f: thread `${GIT_ADD_PATHSPEC[@]}` through both `git status --short` calls so the displays match what `git add -A` will actually stage. Also moves the "Excluding ..." `info` line from the Staging banner to the Working Tree banner — it now appears immediately above the filtered status so users see *why* `docs/project-guide` is absent the first time they look.
+
+**`git-push.sh`:**
+
+- [x] Both `run_cmd git status --short` calls (Step 3 Review, Step 4 post-stage) now use `run_cmd git status --short "${GIT_ADD_PATHSPEC[@]}"`.
+- [x] Move the `info "Excluding ${M}docs/project-guide${RESET} ..."` line from under the **Staging** banner to under the **Working Tree** banner (just before the first filtered status). The Staging banner no longer re-prints the message — it would be redundant a few lines later.
+- [x] The actual `docs/project-guide/` tree remains in the on-disk working directory exactly as before; only the in-script display is filtered. A user running `git status` outside `git-push` will still see the untracked tree — that's correct and expected, since gitbetter's filter is intentionally local to its own staging path.
+
+**Tests (`tests/git-push.bats`):**
+
+- [x] New: with marker + `docs/project-guide/foo.md` + a real `work.txt` change, `git-push` (aborted at stage prompt) output does NOT contain any porcelain form for the excluded path (`?? docs/project-guide`, ` M docs/project-guide`, `M  docs/project-guide`). The unrelated real change still appears.
+
+**Docs:**
+
+- [x] Update `CHANGELOG.md` under `[1.6.3]`: Fixed + small Changed (info-line relocation).
+- [x] Update `docs/specs/features.md` FR-2 step 7 (Working Tree review) and step 8 (Staging) to reflect the filtered displays.
+- [x] Update `docs/specs/tech-spec.md` project-guide exclusion row to include `git status --short` alongside `git add` and the porcelain probe.
+- [x] Bump `GITBETTER_VERSION` in `lib/ui.sh` to `1.6.3`.
+- [x] Update `tests/*.bats` version assertions `v1.6.2` → `v1.6.3`.
+
+**Verify:**
+
+- [x] `shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh` clean.
+- [x] `bats tests/` passes (68 tests: 67 prior + 1 new E.g regression test).
+- [ ] Manual smoke in `pointmatic/datarefinery` (the repo where the user originally reproduced the bug): run `git-push "msg"` with `docs/project-guide/` changes present, confirm `?? docs/project-guide/` no longer appears in any of the in-script status displays.
+
+**Out of scope (deferred to Future):**
+
+- **Hiding the directory from the outer-shell `git status`**: a `.gitignore` entry would do this but would propagate to commits and surprise other tooling. Out of scope — gitbetter intentionally only filters its own displays.
+
 ---
 
 ## Future

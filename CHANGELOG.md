@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.3] — 2026-05-11
+
+Second-round bug-fix patch for v1.6.0. The previous v1.6.2 fix addressed the post-commit dirty-tree probe; this one addresses the user-facing `git status --short` displays in the same flow.
+
+### Fixed
+
+- `git-push`: in repos with a `.project-guide.yml` marker, the "Working Tree" review (Step 3) and the post-staging status summary (Step 4) no longer show `?? docs/project-guide/` or related porcelain entries. Both displays now thread the same `GIT_ADD_PATHSPEC` exclusion array through `git status --short`, so users see exactly what `git add -A` will stage — nothing more. The on-disk working tree is unchanged; only the in-script displays are filtered.
+
+### Changed
+
+- `git-push`: the `Excluding docs/project-guide ...` info line moved from under the **Staging** banner to under the **Working Tree** banner — it now appears immediately above the filtered status so the user sees *why* the project-guide artifacts are absent on first glance.
+
 ## [1.6.2] — 2026-05-11
 
 Bug-fix patch for v1.6.0.

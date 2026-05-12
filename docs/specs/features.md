@@ -140,8 +140,8 @@ Stage all changes, commit, and push to the current branch in one interactive com
 4. Display the summary banner: message, mode (amend or normal), target branch.
 5. Show the last commit for context.
 6. Confirm with the user before proceeding.
-7. Show `git status --short` and confirm staging.
-8. Run `git add -A`, show updated status, and confirm commit. When `.project-guide.yml` exists at the repo root, the staging step transparently excludes `docs/project-guide/` via a Git pathspec (`:/ :(exclude,top)docs/project-guide`) and prints a one-line note naming the exclusion. The same exclusion applies to the pre-commit hook fold-in amend (see FR-4).
+7. Show `git status --short` and confirm staging. When `.project-guide.yml` exists at the repo root, this display threads the project-guide exclusion pathspec, so users see exactly the set of changes that will be staged — `docs/project-guide/` entries are hidden — and a one-line `Excluding ...` `info` line appears above the status output so the filtering is explicit.
+8. Run `git add -A`, show updated status, and confirm commit. The post-staging status display uses the same exclusion pathspec. The exclusion (`:/ :(exclude,top)docs/project-guide`) also applies to the pre-commit hook fold-in amend (see FR-4).
 9. Run `git commit -m "message"` and report success.
 10. Push to `origin/<current_branch>` and report success.
 
