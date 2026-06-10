@@ -1,0 +1,30 @@
+# Copyright (c) 2026 Pointmatic
+# SPDX-License-Identifier: Apache-2.0
+name: Update Homebrew Formula
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  update-formula:
+    name: Update pointmatic/tap formula
+    runs-on: ubuntu-latest
+
+    steps:
+      # Homebrew >= 5.1.15 refuses to load formulae from non-official taps
+      # unless they are trusted (becomes the default at 6.0 / 5.2). The bump
+      # action does a `Formula[...]` *load* (not an install), which trips the
+      # check. `brew trust` is interactive-by-design (human reviews the tap's
+      # code) with no non-interactive flag, so it broken-pipes in CI's no-TTY
+      # shell. The documented CI mechanism during the transition is this env
+      # var. Revisit before Homebrew 6.0 / 5.2 removes it.
+      - name: Update Homebrew formula
+        uses: dawidd6/action-homebrew-bump-formula@v4
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          tap: pointmatic/tap
+          formula: gitbetter
+          tag: ${{ github.ref_name }}
