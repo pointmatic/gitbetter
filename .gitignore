@@ -1,5 +1,15 @@
-# macOS only
+# >>> pyve:managed:gitignore >>>
+# pyve-managed .gitignore — do not edit between the markers;
+# add your own ignores above or below the managed section.
+# macOS
 .DS_Store
+
+# Pyve-managed
+.pyve/
+.envrc
+.env
+.vscode/settings.json
+.venv
 
 # Python build and test artifacts
 __pycache__
@@ -19,13 +29,16 @@ build/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
+# <<< pyve:managed:gitignore <<<
+# macOS only
+
+# Python build and test artifacts
+
+# Jupyter notebooks
+
 # Pyve virtual environment
-.venv
 .pyve/envs
 .pyve/testenv
-.envrc
-.env
-.vscode/settings.json
 
 # project-guide
 /docs/project-guide/.metadata.yml
