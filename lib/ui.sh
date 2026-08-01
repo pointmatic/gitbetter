@@ -19,7 +19,7 @@
 # ──────────────────────────────────────────────────────────────
 
 # ── Project Constants ────────────────────────────────────────
-GITBETTER_VERSION="1.6.3"
+GITBETTER_VERSION="1.7.0"
 GITBETTER_HOMEPAGE="https://github.com/pointmatic/gitbetter"
 
 # ── Colors & Symbols ─────────────────────────────────────────

@@ -48,6 +48,7 @@ No runtime libraries, no Python, no Node, no compiled code.
 gitbetter/
 ├── gitbetter.sh                 # Umbrella info command (--help, --version)
 ├── git-push.sh                  # git-push command script
+├── git-commit.sh                # git-commit command script (git-push minus the push)
 ├── git-tag.sh                   # git-tag command script
 ├── lib/
 │   └── ui.sh                    # Shared UI helpers + version/homepage constants
@@ -56,6 +57,7 @@ gitbetter/
 │   │   └── common-setup.bash    # Shared BATS test setup (temp repo, helpers)
 │   ├── gitbetter.bats           # BATS tests for gitbetter umbrella command
 │   ├── git-push.bats            # BATS tests for git-push
+│   ├── git-commit.bats          # BATS tests for git-commit
 │   └── git-tag.bats             # BATS tests for git-tag
 ├── .github/
 │   └── workflows/
@@ -79,9 +81,9 @@ gitbetter/
 
 | File Type | Convention | Examples |
 |-----------|------------|----------|
-| **Command scripts** | `git-<command>.sh` (hyphenated, `.sh` extension) | `git-push.sh`, `git-tag.sh` |
+| **Command scripts** | `git-<command>.sh` (hyphenated, `.sh` extension) | `git-push.sh`, `git-commit.sh`, `git-tag.sh` |
 | **Library scripts** | `<name>.sh` in `lib/` (sourced by command scripts) | `lib/ui.sh` |
-| **Test files** | `git-<command>.bats` (matches script name) | `git-push.bats`, `git-tag.bats` |
+| **Test files** | `git-<command>.bats` (matches script name) | `git-push.bats`, `git-commit.bats`, `git-tag.bats` |
 | **Test helpers** | `<name>.bash` (`.bash` extension for sourced files) | `common-setup.bash` |
 | **GitHub workflows** | Hyphens, lowercase | `ci.yml`, `homebrew.yml` |
 | **Documentation** | Hyphens, lowercase | `tech-spec.md`, `project-essentials.md` |
@@ -163,13 +165,13 @@ Pure info command. Does not perform git operations or dispatch to subcommands. S
 | Aspect | Implementation |
 |--------|---------------|
 | **Argument parsing** | `case "${1:-}"` on first arg: empty or `--help` → `print_help`; `--version` → `print_version`; anything else → error to stderr, exit 1. |
-| **Help text** | Local `print_help()` function in `gitbetter.sh` — lists all gitbetter commands (`git-push`, `git-tag`), points users at `git-push --help` / `git-tag --help`, ends with `Homepage: ${GITBETTER_HOMEPAGE}`. |
+| **Help text** | Local `print_help()` function in `gitbetter.sh` — lists all gitbetter commands (`git-push`, `git-commit`, `git-tag`), points users at the per-command `--help`, ends with `Homepage: ${GITBETTER_HOMEPAGE}`. |
 | **Version output** | `print_version` (from `lib/ui.sh`) called with no subcommand name. |
 | **Exit code** | 0 for help/version; 1 for unknown flag. |
 
-### Meta-flag handling in `git-push.sh` and `git-tag.sh`
+### Meta-flag handling in `git-push.sh`, `git-commit.sh`, and `git-tag.sh`
 
-Both scripts handle `--help` and `--version` **before** any git-repo validation or other arg parsing, so the flags work outside a git repository.
+All three scripts handle `--help` and `--version` **before** any git-repo validation or other arg parsing, so the flags work outside a git repository.
 
 ```bash
 case "${1:-}" in
@@ -197,6 +199,17 @@ Already implemented. See `features.md` FR-2 through FR-5 for behavior. Key imple
 | **project-guide exclusion** | `git rev-parse --show-toplevel` → check for `.project-guide.yml`; if present, all working-tree-touching git calls get pathspec args `-- :/ :(exclude,top)docs/project-guide`: both `git add -A` invocations, both `git status --short` displays (Step 3 Working Tree review + Step 4 post-stage summary), and the Step 5.5 `git status --porcelain` dirty-tree probe. Marker-gated and `git-push`-local (no `.gitignore` changes). The Working Tree banner emits a one-line `info` naming the exclusion so users see *why* the filtered displays drop `docs/project-guide` entries. |
 | **Cleanup tombstone** | Path: `$(git rev-parse --git-dir)/gitbetter-deleted-branches`. Format: tab-separated `<branch>\t<YYYY-MM-DD>`, one per line, append-only. Written after `git branch -D` in the cleanup flow. Local-only (never committed, never synced). |
 | **Resurrection guard** | In the new-branch leg of the branch-switch step, `awk` looks up the requested name in the tombstone. If present, `ask_yn` (default no) gates `git switch -c`. Yes → `awk` strips every entry for that name from the file, then the branch is created. Existing local branches bypass the check entirely. |
+
+### git-commit.sh
+
+Adapted from `git-push.sh` (see `features.md` FR-5b). Identical argument parsing, sanitization, project-guide exclusion, tombstone guard, staging/commit steps, and dirty-tree fold-in. Deltas:
+
+| Aspect | Implementation |
+|--------|---------------|
+| **Remote check** | Same fetch + ahead/behind detection as git-push, but advisory only — prompt is `ask_yn "Commit anyway?"`; amend mode warns about a messier later rebase instead of force-push risk. |
+| **No push step** | Step 6 prints a "No Push" banner: commit stays local, pointer to batch-push later with `git-push`. No `git push`, no rejection menu, no force-push. |
+| **`--keep` flag** | Parsed for interface parity; changes the branch-keep note in the No Push summary. No cleanup prompt exists to skip. |
+| **Branch workflow** | No post-push section: no Actions/Compare URLs, no cleanup prompt, no tombstone write (the guard still reads the tombstone when creating branches). |
 
 ### git-tag.sh
 
@@ -233,7 +246,8 @@ No configuration files, no environment variables, no dotfiles. All behavior is d
 | Command | Usage | Description |
 |---------|-------|-------------|
 | `gitbetter` | `gitbetter [--help \| --version]` | Umbrella info command — lists subcommands, prints version |
-| `git-push` | `git-push [--amend] "message" [branch]` | Stage, commit, push, and optionally clean up |
+| `git-push` | `git-push [--amend] [--keep\|-k] "message" [branch]` | Stage, commit, push, and optionally clean up |
+| `git-commit` | `git-commit [--amend] [--keep\|-k] "message" [branch]` | Same as git-push, but never pushes |
 | `git-tag` | `git-tag <vX.Y.Z> [branch]` | Validate semver, create tag, push to origin |
 
 ### Exit Codes
@@ -245,7 +259,7 @@ No configuration files, no environment variables, no dotfiles. All behavior is d
 
 ### Shared Flags
 
-All three commands (`gitbetter`, `git-push`, `git-tag`) support:
+All four commands (`gitbetter`, `git-push`, `git-commit`, `git-tag`) support:
 
 | Flag | Behavior |
 |------|----------|
@@ -296,6 +310,7 @@ tests/
 ├── test_helper/
 │   └── common-setup.bash    # Shared setup: create temp git repo, source helpers
 ├── git-push.bats            # Tests for git-push
+├── git-commit.bats          # Tests for git-commit
 └── git-tag.bats             # Tests for git-tag
 ```
 
@@ -334,6 +349,14 @@ teardown() {
 - `--help` → exits 0 with full help text (Usage, Examples, Homepage)
 - `--version` → exits 0 with `gitbetter git-push v<VERSION>` and homepage URL
 
+**git-commit.bats:**
+- Mirrors the git-push.bats parsing/sanitization/meta-flag/remote-check cases
+- Full flow commits locally and never invokes `git push` (remote ref untouched)
+- Feature-branch flow commits on the branch, shows keep note, no cleanup prompt
+- `--amend` full flow replaces last commit without any force-push
+- Project-guide exclusion and tombstone guard behave identically to git-push
+- `--help` / `--version` behave like the other commands (`gitbetter git-commit v<VERSION>`)
+
 **git-tag.bats:**
 - Missing tag argument → prints usage, exits 1
 - Valid semver tags accepted: `v0.0.1`, `v1.0.0`, `v10.20.30`
@@ -358,8 +381,8 @@ ShellCheck and BATS run on every push and pull request via `.github/workflows/ci
 - **Formula name**: `gitbetter`
 - **Install method**: `brew install pointmatic/tap/gitbetter`
 - **What it installs**:
-  - Command scripts (`gitbetter.sh`, `git-push.sh`, `git-tag.sh`) and the `lib/` directory are installed into the formula's `libexec` path.
-  - Thin wrapper scripts are written to `bin/` as `gitbetter`, `git-push`, and `git-tag` (no `.sh` extension) so git discovers the hyphenated pair as subcommands. Each wrapper `exec`s its real script in `libexec`, preserving `$BASH_SOURCE[0]` resolution so `lib/ui.sh` is found at `<libexec>/lib/ui.sh`.
+  - Command scripts (`gitbetter.sh`, `git-push.sh`, `git-commit.sh`, `git-tag.sh`) and the `lib/` directory are installed into the formula's `libexec` path.
+  - Thin wrapper scripts are written to `bin/` as `gitbetter`, `git-push`, `git-commit`, and `git-tag` (no `.sh` extension) so git discovers the hyphenated pair as subcommands. Each wrapper `exec`s its real script in `libexec`, preserving `$BASH_SOURCE[0]` resolution so `lib/ui.sh` is found at `<libexec>/lib/ui.sh`.
 
   The formula lives in the `pointmatic/homebrew-tap` repository (not in this repo). The `url` and `sha256` fields are updated automatically by `dawidd6/action-homebrew-bump-formula` on every `v*` tag push (see [GitHub Actions — Formula Auto-Bump](#github-actions--formula-auto-bump)); all other fields are maintained manually.
 
@@ -372,7 +395,7 @@ ShellCheck and BATS run on every push and pull request via `.github/workflows/ci
     license "Apache-2.0"
 
     def install
-      libexec.install "lib", "gitbetter.sh", "git-push.sh", "git-tag.sh"
+      libexec.install "lib", "gitbetter.sh", "git-push.sh", "git-commit.sh", "git-tag.sh"
       (bin/"gitbetter").write <<~SH
         #!/usr/bin/env bash
         exec "#{libexec}/gitbetter.sh" "$@"
@@ -381,16 +404,21 @@ ShellCheck and BATS run on every push and pull request via `.github/workflows/ci
         #!/usr/bin/env bash
         exec "#{libexec}/git-push.sh" "$@"
       SH
+      (bin/"git-commit").write <<~SH
+        #!/usr/bin/env bash
+        exec "#{libexec}/git-commit.sh" "$@"
+      SH
       (bin/"git-tag").write <<~SH
         #!/usr/bin/env bash
         exec "#{libexec}/git-tag.sh" "$@"
       SH
-      chmod 0555, [bin/"gitbetter", bin/"git-push", bin/"git-tag"]
+      chmod 0555, [bin/"gitbetter", bin/"git-push", bin/"git-commit", bin/"git-tag"]
     end
 
     test do
       assert_match "v#{version}", shell_output("#{bin}/gitbetter --version")
       assert_match "v#{version}", shell_output("#{bin}/git-push --version")
+      assert_match "v#{version}", shell_output("#{bin}/git-commit --version")
       assert_match "v#{version}", shell_output("#{bin}/git-tag --version")
     end
   end
@@ -439,7 +467,7 @@ jobs:
       - name: Install ShellCheck
         run: sudo apt-get install -y shellcheck
       - name: Lint
-        run: shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh
+        run: shellcheck gitbetter.sh git-push.sh git-commit.sh git-tag.sh lib/ui.sh
       - name: Install BATS
         run: |
           git clone https://github.com/bats-core/bats-core.git /tmp/bats

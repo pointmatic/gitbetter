@@ -33,10 +33,10 @@ Solo developers and small-team contributors who use git from the terminal daily,
 - **Workflow completeness** — full coverage from commit through push, tag, and cleanup, without leaving loose ends.
 
 ## Solution Space
-`gitbetter` is a Bash project to streamline repetitive git workflows — push, tag, and clean up — into single, interactive commands. 
+`gitbetter` is a Bash project to streamline repetitive git workflows — commit, push, tag, and branch clean up — into single, interactive commands. 
 
 ### Solution Statement
-gitbetter provides a set of Homebrew-installable Bash scripts (`git-push`, `git-tag`) that wrap multi-step git workflows into single commands with built-in confirmation gates, colorful status output, and smart defaults. Each command previews every action before executing, supports abort at any step, and handles edge cases (pre-commit hook dirty trees, force-push safety, semver validation) so the developer stays in control without memorizing recipes.
+gitbetter provides a set of Homebrew-installable Bash scripts (`git-push`, `git-commit`, `git-tag`) that wrap multi-step git workflows into single commands with built-in confirmation gates, colorful status output, and smart defaults. Each command previews every action before executing, supports abort at any step, and handles edge cases (pre-commit hook dirty trees, force-push safety, semver validation) so the developer stays in control without memorizing recipes.
 
 ### Goals
 - **Reduce push cycle to one command** — `git-push` covers stage → commit → push → branch cleanup in a single interactive flow, matching the "time saved" value criterion.
@@ -48,6 +48,7 @@ gitbetter provides a set of Homebrew-installable Bash scripts (`git-push`, `git-
 
 **In scope:**
 - `git-push` — interactive stage/commit/push with amend support, pre-commit hook recovery, and branch-PR cleanup
+- `git-commit` — identical to `git-push` but never pushes; economizes CI minutes by keeping commits local until a batched push
 - `git-tag` — semver-validated tagging with latest-tag display and push to origin
 - Homebrew tap distribution (`pointmatic/tap`) with formula auto-bump on tag push
 - CI/CD via GitHub Actions (tests on push/PR, formula update on tag)
@@ -70,6 +71,7 @@ gitbetter provides a set of Homebrew-installable Bash scripts (`git-push`, `git-
 
 **Repetitive multi-step sequences**:
   - `git-push` collapses stage → commit → push → cleanup into a single command with one commit message argument
+  - `git-commit` collapses stage → commit into the same flow without the push, so per-commit CI runs (and their Actions minutes) are avoided
   - `git-tag` collapses validate → tag → push-tag into a single command with one version argument
 
 **Error-prone manual typing**:

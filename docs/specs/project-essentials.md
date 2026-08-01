@@ -40,7 +40,7 @@ YAML example:
 
 ### Shared UI library — `lib/ui.sh`
 
-Color constants, symbols, and helper functions (`banner`, `info`, `success`, `warn`, `fail`, `confirm`, `ask_yn`, `divider`, `run_cmd`, `header_box`, `footer_box`) live in `lib/ui.sh` and are sourced by every command script (`git-push.sh`, `git-tag.sh`). Update helpers in **`lib/ui.sh` only**, never duplicate them into individual command scripts.
+Color constants, symbols, and helper functions (`banner`, `info`, `success`, `warn`, `fail`, `confirm`, `ask_yn`, `divider`, `run_cmd`, `header_box`, `footer_box`) live in `lib/ui.sh` and are sourced by every command script (`git-push.sh`, `git-commit.sh`, `git-tag.sh`). Update helpers in **`lib/ui.sh` only**, never duplicate them into individual command scripts.
 
 Command scripts source the library using the script's own directory:
 
@@ -52,11 +52,11 @@ source "${SCRIPT_DIR}/lib/ui.sh"
 
 `pwd -P` resolves symlinks so the lib is found even when the script is reached via a PATH symlink.
 
-**Homebrew install shape:** the formula installs both the scripts and `lib/` into `libexec/`, then writes thin `bin/git-push` and `bin/git-tag` wrappers that `exec` the real scripts. This keeps `$BASH_SOURCE[0]` pointing at `<libexec>/git-<cmd>.sh`, so `lib/ui.sh` resolves correctly at runtime. See `tech-spec.md` for the full formula snippet.
+**Homebrew install shape:** the formula installs both the scripts and `lib/` into `libexec/`, then writes thin `bin/git-push`, `bin/git-commit`, and `bin/git-tag` wrappers that `exec` the real scripts. This keeps `$BASH_SOURCE[0]` pointing at `<libexec>/git-<cmd>.sh`, so `lib/ui.sh` resolves correctly at runtime. See `tech-spec.md` for the full formula snippet.
 
 ### `.sh` extension in repo, dropped on install
 
-Source files in the repository use the `.sh` extension (`git-push.sh`, `git-tag.sh`). Homebrew installs them without the extension (`git-push`, `git-tag`) so git discovers them as subcommands. Always edit the `.sh` files in the repo — never edit installed copies.
+Source files in the repository use the `.sh` extension (`git-push.sh`, `git-commit.sh`, `git-tag.sh`). Homebrew installs them without the extension (`git-push`, `git-commit`, `git-tag`) so git discovers them as subcommands. Always edit the `.sh` files in the repo — never edit installed copies.
 
 ### `confirm()` vs `ask_yn()` — different control flow
 

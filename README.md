@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-Streamline repetitive git workflows — push, tag, and clean up — into single, interactive commands.
+Streamline repetitive git workflows — commit, push, tag, and clean up — into single, interactive commands.
 
 ## Install
 
@@ -24,6 +24,7 @@ Every command supports `--help` and `--version`:
 
 ```bash
 git-push --help
+git-commit --help
 git-tag --version
 ```
 
@@ -56,6 +57,19 @@ If the repo contains a `.project-guide.yml` marker at its root, `git-push` autom
 
 When the cleanup flow deletes a branch, `git-push` records a tombstone entry in `.git/gitbetter-deleted-branches`. If you later try to create a new branch with the same name (`git-push "msg" feat/x`), the script warns you and asks for confirmation — defaulting to abort — so you don't accidentally reuse the name of a retired branch and start it from a stale point.
 
+### git-commit
+
+Identical to `git-push` — same flags, params, and interactive flow — but **never pushes**. The commit stays local, so no GitHub Actions minutes are burned on every commit. Push in batches later with `git-push` when you're ready.
+
+```bash
+git-commit "commit message"                # stage, commit locally — no push
+git-commit "commit message" feature-xyz    # switch to branch, commit locally
+git-commit --amend "updated message"       # amend last commit, no force-push
+git-commit "wip" feature-xyz --keep        # interface parity with git-push
+```
+
+The remote divergence check still runs, but is advisory only ("Commit anyway?"). There is no push-rejection recovery menu (nothing is pushed) and no branch cleanup prompt (cleanup requires a pushed, merged branch).
+
 ### git-tag
 
 Validate a semver tag, show the latest tag for context, and push to origin.
@@ -82,7 +96,7 @@ Use `--prefix NAME` in monorepos or multi-artifact projects to namespace tags by
 Run the test suite locally:
 
 ```bash
-shellcheck gitbetter.sh git-push.sh git-tag.sh lib/ui.sh
+shellcheck gitbetter.sh git-push.sh git-commit.sh git-tag.sh lib/ui.sh
 bats tests/
 ```
 

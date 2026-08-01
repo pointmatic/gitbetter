@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-07-31
+
+New `git-commit` command: identical to `git-push` — same flags (`--amend`, `--keep`/`-k`), params (`"commit message" [branch_name]`), and interactive flow — but **never pushes**. Motivation: pushing on every commit burns GitHub Actions minutes on free and Pro tiers; most of what CI catches can be caught locally, and the rest is a cheap cleanup step at the end of a release. Commit early and often with `git-commit`, then push in batches with `git-push`.
+
+### Added
+
+- `git-commit`: stage → commit flow shared with `git-push`, including message sanitization, branch switch/create with tombstone guard, `.project-guide.yml` pathspec exclusion, and the post-commit dirty-tree fold-in. The push step is replaced by a **No Push** summary reminding you the commit stayed local and how to batch-push later with `git-push`.
+- `git-commit`: the remote divergence check still runs but is advisory only — the prompt is "Commit anyway?" instead of "Push anyway?", and amend mode warns that amending on a stale view makes the later rebase messier (no force-push exists in this command).
+- `git-commit`: `--keep`/`-k` accepted for interface parity with `git-push`; affirms keeping the branch in the summary. There is no post-push cleanup prompt to skip (cleanup requires a pushed, merged branch) and no push-rejection recovery menu (nothing is pushed).
+- 16 new BATS tests in `tests/git-commit.bats` mirroring the `git-push` suite, plus commit-only assertions: local HEAD advances, the remote ref is untouched, no `git push` is ever invoked, and the tombstone guard fires without a push flow.
+- `gitbetter --help` now lists `git-commit`; README documents the new command.
+
 ## [1.6.3] — 2026-05-11
 
 Second-round bug-fix patch for v1.6.0. The previous v1.6.2 fix addressed the post-commit dirty-tree probe; this one addresses the user-facing `git status --short` displays in the same flow.

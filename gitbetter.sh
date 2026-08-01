@@ -5,8 +5,8 @@
 #  gitbetter — umbrella info command for the gitbetter toolkit
 #
 #  Pure info command: does not perform git operations or
-#  dispatch to subcommands. Users invoke `git-push` / `git-tag`
-#  directly.
+#  dispatch to subcommands. Users invoke `git-push` / `git-commit`
+#  / `git-tag` directly.
 #
 #  Usage:  gitbetter [--help | --version]
 # ──────────────────────────────────────────────────────────────
@@ -27,9 +27,11 @@ Usage:
 
 Commands:
   git-push      Stage, commit, push, and optionally clean up a branch
+  git-commit    Same as git-push, but never pushes (saves CI minutes)
   git-tag       Validate a semver tag, create it, and push to origin
 
-Run \`git-push --help\` or \`git-tag --help\` for command-specific usage.
+Run \`git-push --help\`, \`git-commit --help\`, or \`git-tag --help\`
+for command-specific usage.
 
 Homepage: ${GITBETTER_HOMEPAGE}
 EOF
