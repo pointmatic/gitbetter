@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-08-03
+
+Packaging re-release. No functional code changes.
+
+### Fixed
+
+- **Distribution of `git-commit` via Homebrew.** The v1.7.0 tarball already contained `git-commit.sh`, but the `homebrew-tap` formula's `install` block didn't list it, so installs/upgrades to 1.7.0 placed no `bin/git-commit` wrapper on PATH. The formula is now fixed (`pointmatic/homebrew-tap` commits `bec2df8` + `a804055`); this patch tag exists so users stuck on the incomplete 1.7.0 install get a clean `brew upgrade` path — `brew upgrade` never offers anything when the version number is unchanged.
+
 ## [1.7.0] — 2026-07-31
 
 New `git-commit` command: identical to `git-push` — same flags (`--amend`, `--keep`/`-k`), params (`"commit message" [branch_name]`), and interactive flow — but **never pushes**. Motivation: pushing on every commit burns GitHub Actions minutes on free and Pro tiers; most of what CI catches can be caught locally, and the rest is a cheap cleanup step at the end of a release. Commit early and often with `git-commit`, then push in batches with `git-push`.

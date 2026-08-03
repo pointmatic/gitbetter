@@ -40,7 +40,7 @@ teardown() {
 @test "git-commit: --version prints version and homepage, exits 0" {
     run "${GIT_COMMIT_SH}" --version
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"gitbetter git-commit v1.7.0"* ]]
+    [[ "${output}" == *"gitbetter git-commit v1.7.1"* ]]
     [[ "${output}" == *"https://github.com/pointmatic/gitbetter"* ]]
 }
 

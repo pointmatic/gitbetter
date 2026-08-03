@@ -51,6 +51,17 @@ This new command will have the same functionality/flag(s)/params/subcommand(s) a
 
 ---
 
+### Story F.b: v1.7.1 Re-release to deliver `git-commit` via the automated pipeline
+
+The v1.7.0 tarball already contains `git-commit.sh`, but the Homebrew formula's `install` block didn't list it, so users who installed/upgraded to 1.7.0 before the formula fix have a 1.7.0 with no `git-commit` — and `brew upgrade` will never offer them anything since the version is unchanged. The formula is now fixed (`homebrew-tap` commits `bec2df8` + `a804055`); a patch tag gives every user a clean upgrade path through the standard pipeline (tag → auto-bump PR → approve → `brew upgrade`).
+
+- [x] `CHANGELOG.md`: `## [1.7.1]` entry (packaging/distribution fix; no functional code changes)
+- [x] Bump version 1.7.0 → 1.7.1: `GITBETTER_VERSION` in `lib/ui.sh` + `--version` assertions in all `tests/*.bats`
+- [x] shellcheck + `bats tests/` pass
+- [ ] Commit, tag `v1.7.1`, push tag → approve auto-bump PR on `homebrew-tap`
+
+---
+
 ## Future
 
 <!--
